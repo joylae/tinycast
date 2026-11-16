@@ -113,7 +113,7 @@ struct UpdatesTests {
 
         expect(ReleaseChannel(bundleID: "com.tinycast.app") == .development,
             "an upstream bundle never consumes the Chinese feed")
-        expect(ReleaseFeed.repository == "conversun/tinycast-cn", "the feed belongs to the Chinese fork")
+        expect(ReleaseFeed.repository == "joylae/tinycast", "the feed belongs to this fork")
 
         expect(stable.updatesItself && beta.updatesItself, "both shipped channels update")
         expect(!dev.updatesItself, "a local build does not update itself")

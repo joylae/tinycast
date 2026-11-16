@@ -1,34 +1,77 @@
-# 同步上游与发布（CN fork）
+# 同步 CN 上游与发布
 
-本文档是 fork 自有的：上游没有这份文件，所以它永远不参与合并冲突。改动同步流程、
-汉化约定或发布参数时更新它。参考实现：`241794a`（rebase 恢复合并）+ `bdd1fe8`（汉化跟进）。
+`joylae/tinycast` 从 `conversun/tinycast-cn` 合并已发布版本，后者负责跟进原始项目
+`abue-ammar/tinycast`。本仓库自行签名、打包和发布，不更新任何 Homebrew 仓库。
 
-## 正常路径：定时检查，也可手动派发
+## 正常路径
 
-[`sync-upstream-release.yml`](../.github/workflows/sync-upstream-release.yml) 每 6 小时检查一次
-（UTC 00:23、06:23、12:23、18:23，也支持手动派发）：解析上游最新**稳定** release
-（`/releases/latest`，上游的 beta 与 `-sequoia` 预发布都不参与）→ `git merge <tag>` →
-`run-tests.sh` → push main → 调 [`release-cn.yml`](../.github/workflows/release-cn.yml)
-发 `<上游版本>-cn.1`。对应 release 已存在时十几秒内退出，幂等，无需干预。
+[`sync-upstream-release.yml`](../.github/workflows/sync-upstream-release.yml) 每 6 小时检查一次：
+UTC 00:23、06:23、12:23、18:23（北京时间 08:23、14:23、20:23、次日 02:23）。
+GitHub 调度可能延迟，也可手动派发：
 
 ```sh
-gh workflow run sync-upstream-release.yml --repo conversun/tinycast-cn
-# 指定上游 tag：额外加 -f upstream_tag=vX.Y.Z
+gh workflow run sync-upstream-release.yml --repo joylae/tinycast
+# 指定 CN tag 时加：-f upstream_tag=v0.12.15-cn.1
 ```
 
-GitHub 的定时任务可能延迟；需要立即同步时使用上面的手动派发命令。
+默认请求 CN 上游的 `/releases/latest`，只选择正式版；指定 tag 可选择 beta。
+版本必须是 `vMAJOR.MINOR.PATCH[-beta.N]-cn.N`，发布时沿用完整版本，
+例如 `v0.12.15-cn.1`，不会再拼接一次 `-cn.1`。
 
-## 受阻路径：开 issue，不留红叉
+本仓库同名 Release 已存在时跳过。否则检出 `main`，从 CN 上游拉取 tag 到 `FETCH_HEAD`，
+合并、运行 `run-tests.sh`，通过后推送 `main`，将确切提交 SHA 交给
+[`release-cn.yml`](../.github/workflows/release-cn.yml)。拉取上游 tag 不写入本地同名 tag，
+因为本仓库的发布 tag 指向含自身改动的合并提交，与 CN 上游 tag 的提交不同。
 
-汉化 fork 与上游冲突是设计使然，所以 `git merge` 冲突或 `run-tests.sh` 失败都**不算故障**：
-工作流回滚合并、不推 main，改为开一条带 `sync-blocked` 标签的 issue（标题 `Sync vX.Y.Z needs a hand`，
-正文附冲突文件清单或测试尾部日志），run 本身保持绿色。同一 tag 已有未关闭 issue 时不重复创建。
-标签创建失败时仍创建不带标签的 issue，并在日志中警告，避免标签阻断通知。
-这一步靠仓库开着 Issues：关掉的话 `gh issue list` 非零退出，整次派发会跟着变红，
-冲突清单只能去 run 日志的 `Merge upstream release into main` 一步里看。
+发布流程再次运行测试与完整中文检查，构建自签名 Universal 应用，验证主程序和所有 helper
+的签名与架构，打包 DMG 和应用内更新 ZIP，再创建当前仓库的 Release。
+应用内更新仅检查 `joylae/tinycast`；正式与 beta 通道继续隔离。
+更新检查缓存记录来源仓库，切换时忽略旧源或没有来源标记的缓存，重新检查当前仓库。
 
-按下文配方在本地解完、`main` 带上合并提交后，关掉 issue，等待定时任务或再派发一次 —— merge 已是 no-op，
-测试通过，就会照常发 `-cn.1`。
+## 启用条件
+
+- 将工作流和更新来源改动提交并推送到默认分支 `main`。
+- 在 GitHub Actions 中启用 fork 的工作流及定时执行，允许工作流写入仓库内容。
+- 开启仓库 Issues，供合并或测试受阻时报告；分支规则须允许工作流向 `main` 推送。
+- 在当前仓库的 Actions repository secrets 配置 `SIGNING_P12_BASE64` 与
+  `SIGNING_P12_PASSWORD`：前者是含私钥的 `Tinycast Self-Signed` 证书 P12 的 Base64，
+  后者是其导出密码。不能使用原项目的 secrets；fork 不继承这些值。
+- 所有后续发布保持使用同一证书。更换证书或从 CN 上游版本切换时，手动安装一次本仓库 DMG。
+
+签名身份的本地创建方法见 [signing.md](signing.md#1-create-the-tinycast-self-signed-identity-once)。
+这里不需要 Developer ID、公证、更新 Ed25519 私钥或 Homebrew 部署密钥。
+
+## 受阻路径
+
+合并冲突时撤销合并；测试失败时也不推送 `main`。工作流创建标题为
+`Sync vX.Y.Z-cn.N needs a hand` 的 Issue，附冲突文件或测试日志，能创建标签时标记
+`sync-blocked`。同 tag 已有未关闭 Issue 时不重复创建。受阻已成功报告时工作流保持绿色，
+发布 job 跳过；需查看 job 和 Issue，不能只看总状态。Issues 关闭或报告失败会使任务失败。
+
+本地解决方式：
+
+```sh
+git switch -c sync/v0.12.15-cn.1 main
+git fetch --no-tags https://github.com/conversun/tinycast-cn.git refs/tags/v0.12.15-cn.1
+git merge FETCH_HEAD
+```
+
+解决冲突、完成测试与构建后将合并结果放入 `main`，关闭 Issue，再派发同步或等待定时任务。
+已合并的 tag 不再产生代码变化，测试通过后仍会补发缺失的 Release。
+如果合并已经推送，但发布阶段失败，修复后重新派发也可继续发布。
+
+## 手动发布
+
+```sh
+gh workflow run release-cn.yml --repo joylae/tinycast \
+  -f version=0.12.15-cn.1 -f prerelease=false \
+  -f upstream_tag=v0.12.15-cn.1 -f ref=<verified-commit-sha> \
+  -f release_notes='<本次中文更新说明>'
+```
+
+同步沿用 CN 上游版本。手动补丁可递增 `cn.N`，但不要提前占用 CN 上游未来的版本号，
+否则同名 Release 的去重会跳过该上游版本；通常等待下一个 CN Release 再发布。
+本仓库不创建或更新 Homebrew cask；首次安装使用本仓库 DMG，后续走应用内更新。
 
 ## 上游 rebase 过历史时（merge 炸假冲突）
 
@@ -128,21 +171,6 @@ v0.10.2 那次，292 条用户可见字符串里有 200 条只加词条不生效
 - `AppIndex.byCategoryName` 把每个分类词按原文和译文各存一次，`应用` 与 `applications` 都能整段列出。
 - emoji 的中文名与关键词来自 CLDR `zh`，由 `Scripts/gen-emoji.js` 一起生成；中文名是记录的第六段，
   `EmojiIndex` 按 name 计分而不是按关键词计分。
-
-## 手动补发 release
-
-```sh
-gh workflow run release-cn.yml --repo conversun/tinycast-cn \
-  -f version=<上游版本>-cn.N -f prerelease=<跟随上游> \
-  -f upstream_tag=vX.Y.Z -f ref=<commit sha> \
-  -f release_notes='<本次中文更新说明>'
-```
-
-- 版本规则：同步工作流固定发 `-cn.1`；同一上游版本之上再发汉化跟进，用 `-cn.2` 起手动派发。
-- release 发布后，同步工作流检测到同名 release 即跳过，两者互不干扰。
-- 成功后自动 bump [homebrew-tinycast-cn](https://github.com/conversun/homebrew-tinycast-cn)
-  的 cask（version + sha256），无需手动操作；`prerelease=true` 的派发只发 GitHub release，
-  不动 cask —— `brew upgrade --cask tinycast-cn` 是稳定通道。
 
 ## v0.11.3 同步核验
 

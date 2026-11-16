@@ -3,18 +3,20 @@
   Tinycast
 </h1>
 
-> **tinycast-cn** 是面向中文用户的分支：完成了全量简体中文界面汉化，为中文应用名新增全拼与首字母搜索，
-> 并基于上游发布版本构建 Universal（`arm64` + `x86_64`）安装包。产品名仍为 **Tinycast**。
+> **joylae/tinycast** 基于 [tinycast-cn](https://github.com/conversun/tinycast-cn)，保留简体中文界面、
+> 中文全拼与首字母搜索，并定期合并 CN 正式版，构建 Universal（`arm64` + `x86_64`）安装包。
+> 产品名仍为 **Tinycast**。
+>
+> 从[当前仓库 Releases](https://github.com/joylae/tinycast/releases/latest) 下载 DMG，
+> 将 `Tinycast.app` 拖入 Applications。首次安装后运行：
 >
 > ```sh
-> brew trust --tap conversun/tinycast-cn   # 第三方 tap 需要先信任
-> brew tap conversun/tinycast-cn
-> brew install --cask tinycast-cn
+> xattr -dr com.apple.quarantine "/Applications/Tinycast.app"
 > ```
 >
-> 后续通过应用内更新器升级；不支持 CN 更新器的旧版可先运行
-> `brew update && brew upgrade --cask --greedy tinycast-cn`。装成 `Tinycast.app`，与上游
-> `tinycast`、`tinycast-universal`、`tinycast-sequoia` 占用同一路径，只能安装其中一个。
+> 后续通过应用内更新器从 `joylae/tinycast` 升级；本仓库不发布 Homebrew cask。
+> 从原版或 CN 上游切换时需手动安装本仓库 DMG 一次，之后保持使用同一签名证书。
+> 安装路径仍为 `Tinycast.app`，会替换同路径的其他版本。
 
 <p align="center">
   A native macOS launcher for everyday productivity. Lightweight and open source.
@@ -51,23 +53,16 @@ For anything private, feel free to email [iabueammar@gmail.com](mailto:iabueamma
 
 ## Install
 
+从[当前仓库 Releases](https://github.com/joylae/tinycast/releases/latest) 下载 DMG，
+将 `Tinycast.app` 拖入 `/Applications`。本构建使用自签名证书且未经公证，首次安装后运行：
+
 ```sh
-brew trust --tap conversun/tinycast-cn   # required for third-party taps
-brew tap conversun/tinycast-cn
-brew install --cask tinycast-cn
+xattr -dr com.apple.quarantine "/Applications/Tinycast.app"
 ```
 
-Updates install through the CN in-app updater. For older builds without CN updater support,
-run `brew update && brew upgrade --cask --greedy tinycast-cn` once.
-
-This is the Chinese build, installed as `Tinycast.app` — the same path the upstream `tinycast`,
-`tinycast-universal` and `tinycast-sequoia` casks own, so the cask conflicts with all three. Pick
-one, or install the upstream `tinycast@beta` alongside it (that one is `Tinycast Beta.app`).
-
-Tinycast is self-signed. Installing via Homebrew clears the macOS quarantine flag for you
-automatically on every install and update, so there's nothing to run. (If you download the DMG
-directly from Releases instead, clear it once: `xattr -dr com.apple.quarantine
-"/Applications/Tinycast.app"`.)
+后续更新通过应用内更新器从 `joylae/tinycast` 获取。本仓库不维护 Homebrew cask。
+来自其他仓库或不同签名证书的安装不能通过应用内更新直接切换，需先手动安装本仓库 DMG。
+这会替换同路径的 `Tinycast.app`；应用标识沿用 CN 版，现有设置与数据继续使用。
 
 ## Permissions
 

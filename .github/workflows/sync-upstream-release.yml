@@ -51,7 +51,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REQUESTED_TAG: ${{ inputs.upstream_tag }}
-          UPSTREAM_REPOSITORY: abue-ammar/tinycast
+          UPSTREAM_REPOSITORY: conversun/tinycast-cn
         run: |
           if [ -n "$REQUESTED_TAG" ]; then
             RELEASE="$(gh api "repos/${UPSTREAM_REPOSITORY}/releases/tags/${REQUESTED_TAG}")"
@@ -61,11 +61,11 @@ jobs:
           fi
           UPSTREAM_TAG="$(jq -r '.tag_name' <<< "$RELEASE")"
           PRERELEASE="$(jq -r '.prerelease' <<< "$RELEASE")"
-          if [[ ! "$UPSTREAM_TAG" =~ ^v[0-9]+(\.[0-9]+){1,2}([.-][0-9A-Za-z]+)*$ ]]; then
+          if [[ ! "$UPSTREAM_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?-cn\.[0-9]+$ ]]; then
             echo "::error::Unsupported upstream tag '$UPSTREAM_TAG'."
             exit 1
           fi
-          VERSION="${UPSTREAM_TAG#v}-cn.1"
+          VERSION="${UPSTREAM_TAG#v}"
           RELEASE_TAG="v${VERSION}"
           SHOULD_RELEASE=true
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
@@ -89,8 +89,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git remote add upstream https://github.com/abue-ammar/tinycast.git
-          git fetch --no-tags upstream "refs/tags/${UPSTREAM_TAG}:refs/tags/${UPSTREAM_TAG}"
+          git remote add upstream https://github.com/conversun/tinycast-cn.git
+          git fetch --no-tags upstream "refs/tags/${UPSTREAM_TAG}"
           # Called on the main shell, never down a pipe: a subshell's `exit` would not stop the step.
           report() {
             {
@@ -101,7 +101,7 @@ jobs:
               echo "TINYCAST_EOF"
             } >> "$GITHUB_OUTPUT"
           }
-          if ! git merge --no-edit "$UPSTREAM_TAG"; then
+          if ! git merge --no-edit FETCH_HEAD; then
             CONFLICTS="$(git diff --name-only --diff-filter=U)"
             git merge --abort
             report conflict "$CONFLICTS"
@@ -157,9 +157,9 @@ jobs:
           To resolve locally:
 
           \`\`\`sh
-          git fetch --no-tags origin refs/tags/${UPSTREAM_TAG}:refs/tags/${UPSTREAM_TAG}
           git switch -c sync/${UPSTREAM_TAG} main
-          git merge ${UPSTREAM_TAG}
+          git fetch --no-tags https://github.com/conversun/tinycast-cn.git refs/tags/${UPSTREAM_TAG}
+          git merge FETCH_HEAD
           \`\`\`
 
           Close this issue once \`main\` carries the merge; the next scheduled run picks the release up.
@@ -175,5 +175,5 @@ jobs:
       prerelease: ${{ needs.sync.outputs.prerelease == 'true' }}
       upstream_tag: ${{ needs.sync.outputs.upstream_tag }}
       ref: ${{ needs.sync.outputs.source_commit }}
-      release_notes: "同步上游 ${{ needs.sync.outputs.upstream_tag }}，保留中文本地化和拼音搜索。"
+      release_notes: "同步 CN 上游 ${{ needs.sync.outputs.upstream_tag }}，保留当前分支改动。"
     secrets: inherit

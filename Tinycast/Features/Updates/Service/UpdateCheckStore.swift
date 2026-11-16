@@ -43,7 +43,8 @@ final class UpdateCheckStore {
         self.fileURL = fileURL
         self.fetch = fetch
         guard let data = try? Data(contentsOf: fileURL),
-            let cache = try? JSONDecoder().decode(Cache.self, from: data)
+            let cache = try? JSONDecoder().decode(Cache.self, from: data),
+            cache.repository == ReleaseFeed.repository
         else { return }
         latest = cache.latest
         lastCheckedAt = cache.lastCheckedAt
@@ -130,12 +131,14 @@ final class UpdateCheckStore {
 
     private func persist() {
         let cache = Cache(
-            lastCheckedAt: lastCheckedAt, latest: latest, installedVersion: installedVersion)
+            repository: ReleaseFeed.repository, lastCheckedAt: lastCheckedAt,
+            latest: latest, installedVersion: installedVersion)
         guard let data = try? JSONEncoder().encode(cache) else { return }
         try? data.write(to: fileURL, options: .atomic)
     }
 
     private struct Cache: Codable {
+        var repository: String
         var lastCheckedAt: Date?
         var latest: AvailableRelease?
         var installedVersion: AppVersion?

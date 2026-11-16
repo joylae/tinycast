@@ -1,16 +1,14 @@
 # Updates
 
-By default, Tinycast CN checks `conversun/tinycast-cn` releases once a day and offers the newest
+By default, Tinycast CN checks `joylae/tinycast` releases once a day and offers the newest
 release for its own channel in a pill in the palette, then installs it at the next relaunch or quit.
 There is no Sparkle or appcast.
 
 ## Invariants
 
-- **Tinycast installs its own updates, and Homebrew stays out of the way.** The CN cask declares
-  `auto_updates true`, which is Homebrew's own flag for an app that manages its own version. `brew
-update && brew upgrade` therefore skips Tinycast entirely — it is never reported outdated, never
-  re-downloaded, and a self-updated copy is never trashed or rolled back. `brew install`, `brew
-uninstall` and `brew list` keep working unchanged.
+- **Tinycast installs its own updates.** This fork publishes DMG and updater ZIP assets on
+  `joylae/tinycast`; it does not publish or update a Homebrew cask. Initial installation and switching
+  from another repository require this fork's DMG. Subsequent updates come from its own release feed.
 - **The archive is a zip, never the DMG.** A zip expands with `ditto`; a DMG would have to be mounted,
   which means a volume, a Spotlight handle and a detach that can fail. A release published without a
   zip is not installable and is not offered.
@@ -35,7 +33,7 @@ uninstall` and `brew list` keep working unchanged.
 - **Only the exact bytes verified are installed.** Any process can write to Caches while the update
   waits, so the swap re-runs the trust check and requires the code-directory hash recorded at
   verification. It also skips the swap when the installed app is no longer the version running, so
-  a `brew upgrade` made meanwhile is never rolled back.
+  another installation made meanwhile is never rolled back.
 - **Relaunching goes through `NSApp.terminate`, never `exit`.** That is what flushes a pending note
   draft and hands back the Hyper Key's HID-level caps remap, which outlives the process.
   Relaunch schedules termination through the main run loop, outside any Swift task or dispatch
@@ -54,7 +52,7 @@ uninstall` and `brew list` keep working unchanged.
   The preference travels through settings backups and `general.automaticallyCheckForUpdates` in
   settings.json; release metadata stays in the feature's own cache file.
 - **The app shows no release notes.** The Changelog item in the palette's app menu opens
-  `https://tinycast.dev/changelog/`.
+  `https://github.com/joylae/tinycast/releases`.
 
 ## The pill
 
@@ -88,8 +86,8 @@ beta precedence are compared first, then the CN revision numerically. Thus `0.11
 `0.11.19-cn.1`, while `0.11.20-cn.1` outranks both. `cn.N` is not itself a prerelease;
 `0.11.20-beta.1-cn.1` is. A tag disagreeing with its GitHub `prerelease` flag is skipped.
 
-Versions through `0.11.19-cn.1` lack the CN updater. They must upgrade once by DMG or Homebrew
-(`brew upgrade --cask --greedy tinycast-cn` includes a cask marked `auto_updates true`).
+Versions through `0.11.19-cn.1` lack the CN updater. They must install this repository's DMG once.
+Switching from another signer also requires a manual install.
 Debug and upstream bundle ids are development channels and never consume the CN feed.
 
 The Intel build is _not_ a channel. It shares the stable tag, version, bundle id and signature, so it
@@ -105,7 +103,9 @@ self-rescheduling pump, and one atomic JSON file.
 ~/Library/Caches/<bundle-id>/update-check.json
 ```
 
-It holds `lastCheckedAt`, the newest release seen, and the version just installed. Freshness is
+It holds the source `repository`, `lastCheckedAt`, the newest release seen, and the version just
+installed. A cache from another repository, or an older cache with no source, is discarded so its
+download URL and check time cannot carry over when switching forks. Freshness is
 measured from `lastCheckedAt`, so relaunching never re-asks GitHub; the interval is 24 h, dropping to
 2 h after a failed attempt, and the first check waits 30 s so it never lands in the login rush. The
 request carries a `User-Agent`, which the GitHub API rejects requests without.
@@ -143,18 +143,18 @@ One route, whatever the install came from:
 A successful install records its version as `installedVersion`. The first launch running that
 version takes it and shows an "Updated to Tinycast <version>" HUD, whether it came from Relaunch or a
 later quit and reopen. A launch of an older version shows that the update could not be installed,
-since the swap at quit has no window to report in. A newer version only clears it, so a brew or DMG
+since the swap at quit has no window to report in. A newer version only clears it, so a separate DMG
 install never reports.
 
 Nothing here touches `~/Library/Preferences`, `~/Library/Caches` or `Application Support`, so no
-setting, clipboard entry, note or snippet is affected by an update, by `brew upgrade`, or by both.
+setting, clipboard entry, note or snippet is affected by an in-app update or a manual DMG upgrade.
 
 ## Releasing into it
 
-`.github/workflows/release-cn.yml` publishes `Tinycast-CN-<version>.dmg` for manual/Homebrew installs
+`.github/workflows/release-cn.yml` publishes `Tinycast-CN-<version>.dmg` for manual installs
 and `Tinycast-CN-Universal-<version>.zip` for the updater, from the same signed Universal build.
 CI expands the ZIP and checks its signatures and both slices in the app and all three helpers before
-publishing it or enabling Homebrew's `auto_updates`.
+publishing it.
 The zip is made with
 
 ```sh
@@ -168,6 +168,5 @@ The CN workflow combines the supplied Chinese changelog with GitHub's generated 
 then `<!-- tinycast:install -->`, then the install text. The app opens this CN release page for its
 changelog; changes belong above that marker — see [release.md](../release.md#release-notes).
 
-**The cask declares `auto_updates true`** in `conversun/homebrew-tinycast-cn`. Without it Homebrew
-compares its Caskroom receipt against the cask version, sees a self-updated app as outdated forever,
-and re-installs over it on the next `brew upgrade`.
+This fork does not maintain a Homebrew cask. Releases and updater assets belong to
+`joylae/tinycast`; the CN upstream is linked only as the source of merged changes.

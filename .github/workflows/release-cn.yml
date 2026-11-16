@@ -14,7 +14,7 @@ on:
         type: boolean
         default: true
       upstream_tag:
-        description: "Upstream Tinycast release tag"
+        description: "Upstream tinycast-cn release tag, e.g. v0.12.15-cn.1"
         type: string
         required: true
       release_notes:
@@ -48,8 +48,6 @@ on:
         required: true
       SIGNING_P12_PASSWORD:
         required: true
-      HOMEBREW_TAP_DEPLOY_KEY:
-        required: false
 
 permissions:
   contents: write
@@ -140,7 +138,6 @@ jobs:
             "dist/Tinycast-CN-${VERSION}.dmg"
 
       - name: Package and verify Universal updater ZIP
-        id: updater_zip
         env:
           VERSION: ${{ inputs.version }}
         run: |
@@ -165,7 +162,6 @@ jobs:
               esac
             done
           done
-          echo "validated=true" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@v7
         with:
@@ -198,16 +194,14 @@ jobs:
           NOTES_ARGS=(-f "tag_name=v${VERSION}" -f "target_commitish=${SOURCE_COMMIT}")
           if [ -n "$PREVIOUS" ]; then NOTES_ARGS+=(-f "previous_tag_name=${PREVIOUS}"); fi
           GENERATED="$(gh api "repos/${GH_REPO}/releases/generate-notes" "${NOTES_ARGS[@]}" --jq .body)"
-          printf '## 更新内容\n\n%s\n\n基于上游 [%s](https://github.com/abue-ammar/tinycast/releases/tag/%s)。\n\n## 合并记录\n\n%s\n\n<!-- tinycast:install -->\n\n' \
+          printf '## 更新内容\n\n%s\n\n基于 CN 上游 [%s](https://github.com/conversun/tinycast-cn/releases/tag/%s)。\n\n## 合并记录\n\n%s\n\n<!-- tinycast:install -->\n\n' \
             "$CN_RELEASE_NOTES" "$UPSTREAM_TAG" "$UPSTREAM_TAG" "$GENERATED" \
             > "$RUNNER_TEMP/notes.md"
           BT='```'
-          printf '%s\n\n%ssh\nbrew trust --tap conversun/tinycast-cn\nbrew tap conversun/tinycast-cn\nbrew install --cask tinycast-cn\n%s\n\n%s\n\n%ssh\nxattr -dr com.apple.quarantine "/Applications/Tinycast.app"\n%s\n\n%s\n' \
-            '**稳定版推荐通过 Homebrew 安装** —— 安装时会自动清除 quarantine 标记；后续更新由应用内更新器处理：' \
+          printf '%s\n\n%ssh\nxattr -dr com.apple.quarantine "/Applications/Tinycast.app"\n%s\n\n%s\n' \
+            '下载本 Release 的 DMG，将 Tinycast.app 拖入 Applications。本构建是自签名的，首次安装后需清除隔离标记：' \
             "$BT" "$BT" \
-            '直接下载 DMG 的话，本构建是自签名的，macOS 会拦下它，需要清除一次隔离标记：' \
-            "$BT" "$BT" \
-            '尚未适配 CN 更新器的旧版需先手动安装新版 DMG，或通过 Homebrew 完成首次升级；测试版请直接下载 DMG。' \
+            '后续更新通过应用内更新器从当前仓库获取。从其他仓库或不同签名的版本切换时，请先手动安装本仓库的 DMG。' \
             >> "$RUNNER_TEMP/notes.md"
           gh release create "v${VERSION}" "dist/Tinycast-CN-${VERSION}.dmg" \
             "dist/Tinycast-CN-Universal-${VERSION}.zip" \
@@ -215,44 +209,3 @@ jobs:
             --title "Tinycast CN ${VERSION}" \
             --notes-file "$RUNNER_TEMP/notes.md" \
             "${PRERELEASE_FLAG[@]}"
-
-      # A deploy key on the tap, not a PAT: write access to exactly one repo and nothing else.
-      # Skipped for a prerelease: `brew upgrade --cask tinycast-cn` is the stable channel.
-      - name: Update Homebrew cask
-        if: ${{ !inputs.prerelease && steps.updater_zip.outputs.validated == 'true' }}
-        env:
-          TAP_DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
-          VERSION: ${{ inputs.version }}
-        run: |
-          if [ -z "${TAP_DEPLOY_KEY}" ]; then
-            echo "::warning::HOMEBREW_TAP_DEPLOY_KEY not set — skipping the cask bump."
-            exit 0
-          fi
-          SHA="$(shasum -a 256 "dist/Tinycast-CN-${VERSION}.dmg" | awk '{print $1}')"
-          KEY="$RUNNER_TEMP/tap_key"
-          printf '%s\n' "$TAP_DEPLOY_KEY" > "$KEY"
-          chmod 600 "$KEY"
-          export GIT_SSH_COMMAND="ssh -i $KEY -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
-          git clone --depth 1 git@github.com:conversun/homebrew-tinycast-cn.git tap
-          CASK_FILE="tap/Casks/tinycast-cn.rb"
-          # Anchored so the sha256 inside a comment or URL can never be the one rewritten.
-          sed -i '' -E "s|^  version \".*\"|  version \"${VERSION}\"|" "$CASK_FILE"
-          sed -i '' -E "s|^  sha256 \".*\"|  sha256 \"${SHA}\"|" "$CASK_FILE"
-          if grep -q '^  auto_updates ' "$CASK_FILE"; then
-            sed -i '' -E 's|^  auto_updates .*|  auto_updates true|' "$CASK_FILE"
-          else
-            sed -i '' '/^  sha256 /a\
-            auto_updates true
-            ' "$CASK_FILE"
-          fi
-          cd tap
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Casks/tinycast-cn.rb
-          if git diff --cached --quiet; then
-            echo "Cask already at ${VERSION}."
-          else
-            git commit -m "tinycast-cn ${VERSION}"
-            git push
-          fi
-          rm -f "$KEY"

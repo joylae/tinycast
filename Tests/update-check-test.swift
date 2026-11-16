@@ -11,6 +11,7 @@ struct UpdateCheckTests {
         try await stopsBeforeFirstCheck()
         try await cancelsAndRestarts()
         try await checksCNRevisionAndReopensCache()
+        try await rejectsOtherRepositoryCache()
         try await manualCheckAnswersDuringAutomaticOne()
         try reportsInstalledVersionOnce()
         print("\(passes) passed, \(failures) failed")
@@ -148,6 +149,29 @@ struct UpdateCheckTests {
         expect(store.update?.version == AppVersion("1.1.0-cn.1"), "both checks leave the release in place")
     }
 
+    static func rejectsOtherRepositoryCache() async throws {
+        for repository in [nil, "conversun/tinycast-cn"] as [String?] {
+            let file = makeFile()
+            defer { try? FileManager.default.removeItem(at: file) }
+            try seedCache(at: file, repository: repository, checkedAt: Date())
+            let fixture = FetchFixture()
+            let store = makeStore(file: file, fixture: fixture)
+            defer { store.stop() }
+
+            expect(store.latest == nil, "another repository's cached download is discarded")
+            expect(store.lastCheckedAt == nil, "another repository cannot delay the first check")
+            expect(store.update == nil, "an old cache cannot offer an upstream download")
+            store.start(after: .zero)
+            try await StateWait { fixture.requests == 1 }.wait()
+            fixture.respond(feed(version: "1.2.0-cn.1"))
+            try await StateWait { !store.isChecking }.wait()
+            expect(store.update?.version == AppVersion("1.2.0-cn.1"), "this fork's feed replaces the old cache")
+
+            let reopened = makeStore(file: file, fixture: fixture)
+            expect(reopened.latest == store.latest, "this fork's new cache survives relaunch")
+        }
+    }
+
     static func reportsInstalledVersionOnce() throws {
         let file = makeFile()
         defer { try? FileManager.default.removeItem(at: file) }
@@ -178,15 +202,18 @@ struct UpdateCheckTests {
         expect(newer.takeInstallReport() == nil, "a newer version from elsewhere reports nothing")
     }
 
-    static func seedCache(at file: URL) throws {
+    static func seedCache(
+        at file: URL, repository: String? = ReleaseFeed.repository, checkedAt: Date = .distantPast
+    ) throws {
         guard
             let release = ReleaseFeed.newest(
                 from: feed(version: "1.1.0-cn.1"), channel: .stable, architecture: .current)
         else { fatalError("the fixture release must be installable") }
-        let cache: [String: Any] = [
-            "lastCheckedAt": Date.distantPast.timeIntervalSinceReferenceDate,
+        var cache: [String: Any] = [
+            "lastCheckedAt": checkedAt.timeIntervalSinceReferenceDate,
             "latest": try JSONSerialization.jsonObject(with: JSONEncoder().encode(release))
         ]
+        cache["repository"] = repository
         try JSONSerialization.data(withJSONObject: cache).write(to: file)
     }
 
