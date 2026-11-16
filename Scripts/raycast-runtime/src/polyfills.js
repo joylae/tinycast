@@ -803,19 +803,72 @@ if (!g.TextDecoder) {
       this.encoding = String(encoding).toLowerCase();
       this.fatal = !!options.fatal;
       this.ignoreBOM = !!options.ignoreBOM;
+      this._pending = new Uint8Array();
+      this._started = false;
     }
-    decode(input) {
-      if (input === undefined) return "";
+    decode(input = new Uint8Array(), options = {}) {
       let bytes;
       if (input instanceof Uint8Array) bytes = input;
       else if (input instanceof ArrayBuffer) bytes = new Uint8Array(input);
       else if (ArrayBuffer.isView(input))
         bytes = new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
       else throw new TypeError("TextDecoder.decode: unsupported input");
-      if (!this.ignoreBOM && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
-        bytes = bytes.subarray(3);
+      if (this._pending.length) {
+        const joined = new Uint8Array(this._pending.length + bytes.length);
+        joined.set(this._pending);
+        joined.set(bytes, this._pending.length);
+        bytes = joined;
       }
-      return utf8Decode(bytes, this.fatal);
+      let end = bytes.length;
+      if (options.stream) {
+        let start = end - 1;
+        while (start >= 0 && end - start < 4 && (bytes[start] & 0xc0) === 0x80) start--;
+        const lead = bytes[start];
+        const length = lead >= 0xc2 && lead <= 0xdf ? 2
+          : lead >= 0xe0 && lead <= 0xef ? 3 : lead >= 0xf0 && lead <= 0xf4 ? 4 : 0;
+        if (length && end - start < length) {
+          const lower = lead === 0xe0 ? 0xa0 : lead === 0xf0 ? 0x90 : 0x80;
+          const upper = lead === 0xed ? 0x9f : lead === 0xf4 ? 0x8f : 0xbf;
+          if (end === start + 1 || (bytes[start + 1] >= lower && bytes[start + 1] <= upper)) end = start;
+        }
+      }
+      this._pending = bytes.slice(end);
+      try {
+        let text = utf8Decode(bytes.subarray(0, end), this.fatal);
+        if (text.length && !this._started) {
+          this._started = true;
+          if (!this.ignoreBOM && text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+        }
+        return text;
+      } finally {
+        if (!options.stream) {
+          this._pending = new Uint8Array();
+          this._started = false;
+        }
+      }
+    }
+  };
+}
+
+if (!g.TextDecoderStream) {
+  g.TextDecoderStream = class TextDecoderStream {
+    constructor(encoding = "utf-8", options = {}) {
+      const decoder = new g.TextDecoder(encoding, options);
+      this.encoding = decoder.encoding;
+      this.fatal = decoder.fatal;
+      this.ignoreBOM = decoder.ignoreBOM;
+      const stream = new g.TransformStream({
+        transform(chunk, controller) {
+          const text = decoder.decode(chunk, { stream: true });
+          if (text) controller.enqueue(text);
+        },
+        flush(controller) {
+          const text = decoder.decode();
+          if (text) controller.enqueue(text);
+        },
+      });
+      this.readable = stream.readable;
+      this.writable = stream.writable;
     }
   };
 }

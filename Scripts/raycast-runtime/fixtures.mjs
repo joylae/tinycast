@@ -897,6 +897,33 @@ export default async function Command() {
 }
 `;
 
+const decoderStreamSource = `
+export default async function Command() {
+  const results = [];
+  for (const bytes of [
+    [0xef, 0xbb, 0xbf, 0x41, 0xe4, 0xbd, 0xa0, 0xf0, 0x9f, 0x98, 0x80],
+    [0xe4, 0xbd], [0xe0, 0x80, 0x41], [0xef, 0xbb, 0xbf, 0xef, 0xbb, 0xbf],
+  ]) {
+    for (let split = 0; split <= bytes.length; split++) {
+      const stream = new ReadableStream({ start(controller) {
+        controller.enqueue(Uint8Array.from(bytes.slice(0, split)));
+        controller.enqueue(Uint8Array.from(bytes.slice(split)));
+        controller.close();
+      }});
+      let text = '';
+      for await (const chunk of stream.pipeThrough(new TextDecoderStream())) text += chunk;
+      results.push({bytes, split, text});
+    }
+  }
+  let fatal = false;
+  try {
+    const stream = new Response(Uint8Array.from([0xe4, 0xbd])).body;
+    for await (const chunk of stream.pipeThrough(new TextDecoderStream('utf-8', {fatal: true}))) {}
+  } catch (error) { fatal = error instanceof TypeError; }
+  globalThis.__decoderStream = {results, fatal};
+}
+`;
+
 const noViewSource = `
 import { Clipboard, showHUD } from "@raycast/api";
 
@@ -1441,6 +1468,16 @@ export async function runFixtures() {
       },
     },
   );
+
+  await run("LiteLLM text decoding across response chunks", decoderStreamSource, "no-view", async (harness) => {
+    const result = harness.call("globalThis.__decoderStream");
+    check("TextDecoderStream is available", result !== undefined, harness.state.failures.join(" | "));
+    for (const item of result?.results ?? []) {
+      const expected = new TextDecoder().decode(Uint8Array.from(item.bytes));
+      check(`UTF-8 stream ${item.bytes} split ${item.split}`, item.text === expected, JSON.stringify(item.text));
+    }
+    check("fatal decoding rejects a truncated final character", result?.fatal === true);
+  });
 
   const indexBody = JSON.stringify(Array.from({ length: 4000 }, (_, index) => ({ name: `pkg-${index}` })));
   await run(
