@@ -19,7 +19,7 @@ struct WindowSwitchScreen: PaletteScreen {
         let coordinator = core.windowSwitchCoordinator
         var items = [
             PopoverMenuItem(
-                title: String(localized: "Switch to Window"), systemImage: "macwindow", shortcut: "↵"
+                localizedTitle: "Switch to Window", systemImage: "macwindow", shortcut: "↵"
             ) {
                 coordinator.activate(entry)
             }
@@ -27,7 +27,7 @@ struct WindowSwitchScreen: PaletteScreen {
         if !entry.isMinimized {
             items.append(
                 PopoverMenuItem(
-                    title: String(localized: "Minimize Window"), systemImage: "minus.rectangle",
+                    localizedTitle: "Minimize Window", systemImage: "minus.rectangle",
                     shortcut: "⌃⇧M"
                 ) {
                     coordinator.minimize(entry)
@@ -35,14 +35,14 @@ struct WindowSwitchScreen: PaletteScreen {
         }
         items.append(
             PopoverMenuItem(
-                title: String(localized: "Hide Application"), systemImage: "eye.slash", startsSection: true,
+                localizedTitle: "Hide Application", systemImage: "eye.slash", startsSection: true,
                 shortcut: "⌃⇧H"
             ) {
                 coordinator.hideApplication(entry)
             })
         items.append(
             PopoverMenuItem(
-                title: String(localized: "Quit Application"), systemImage: "power", shortcut: "⌃⇧Q"
+                localizedTitle: "Quit Application", systemImage: "power", shortcut: "⌃⇧Q"
             ) {
                 coordinator.quitApplication(entry)
             })

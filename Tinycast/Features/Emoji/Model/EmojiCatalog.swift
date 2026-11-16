@@ -56,13 +56,13 @@ enum EmojiCategory: String, CaseIterable, Sendable {
     }
 
     /// Names the selected character in Actions; Unicode's latter categories are symbol collections.
-    var itemTitle: String {
+    var itemTitle: LocalizedStringResource {
         switch self {
         case .symbols, .arrows, .currency, .math, .shapesAndPunctuation, .cjk,
             .keysAndTechnical:
-            String(localized: "Symbol")
+            "Symbol"
         default:
-            String(localized: "Emoji")
+            "Emoji"
         }
     }
 }

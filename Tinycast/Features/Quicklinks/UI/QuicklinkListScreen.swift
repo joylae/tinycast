@@ -118,7 +118,7 @@ enum QuicklinkActionsMenu {
     ) -> PopoverMenuContent {
         var items: [PopoverMenuItem] = [
             PopoverMenuItem(
-                title: String(localized: "Open Quicklink"), systemImage: quicklink.symbol, shortcut: "↵"
+                localizedTitle: "Open Quicklink", systemImage: quicklink.symbol, shortcut: "↵"
             ) {
                 core.quicklinkCoordinator.openQuicklink(id: quicklink.id, values: values)
             }
@@ -127,7 +127,7 @@ enum QuicklinkActionsMenu {
         if quicklink.openWithBundleID != nil {
             items.append(
                 PopoverMenuItem(
-                    title: String(localized: "Open With Default App"), systemImage: "arrow.up.forward.app",
+                    localizedTitle: "Open With Default App", systemImage: "arrow.up.forward.app",
                     shortcut: "⌘↵"
                 ) {
                     core.quicklinkCoordinator.openQuicklink(
@@ -136,26 +136,26 @@ enum QuicklinkActionsMenu {
         }
         items.append(
             PopoverMenuItem(
-                title: String(localized: "Copy Link"), systemImage: "doc.on.clipboard", shortcut: "⌃⌘C"
+                localizedTitle: "Copy Link", systemImage: "doc.on.clipboard", shortcut: "⌃⌘C"
             ) {
                 core.quicklinkCoordinator.copyQuicklink(id: quicklink.id)
             })
         items.append(
             PopoverMenuItem(
-                title: String(localized: "Edit Quicklink"), systemImage: "pencil", startsSection: true,
+                localizedTitle: "Edit Quicklink", systemImage: "pencil", startsSection: true,
                 shortcut: "⌘E"
             ) {
                 core.quicklinkCoordinator.editQuicklink(quicklink)
             })
         items.append(
             PopoverMenuItem(
-                title: String(localized: "Create Quicklink"), systemImage: "plus", shortcut: "⌘N"
+                localizedTitle: "Create Quicklink", systemImage: "plus", shortcut: "⌘N"
             ) {
                 core.quicklinkCoordinator.editQuicklink(nil)
             })
         items.append(
             PopoverMenuItem(
-                title: String(localized: "Duplicate Quicklink"), systemImage: "plus.square.on.square",
+                localizedTitle: "Duplicate Quicklink", systemImage: "plus.square.on.square",
                 shortcut: "⌘D"
             ) {
                 core.quicklinkCoordinator.duplicateQuicklink(id: quicklink.id)
@@ -163,13 +163,13 @@ enum QuicklinkActionsMenu {
         items.append(
             quicklink.isPinned
                 ? PopoverMenuItem(
-                    title: String(localized: "Unpin Quicklink"), systemImage: "pin.slash",
+                    localizedTitle: "Unpin Quicklink", systemImage: "pin.slash",
                     startsSection: true, shortcut: "⌘."
                 ) {
                     core.quicklinkCoordinator.toggleQuicklinkPinned(id: quicklink.id)
                 }
                 : PopoverMenuItem(
-                    title: String(localized: "Pin Quicklink"), systemImage: "pin", startsSection: true,
+                    localizedTitle: "Pin Quicklink", systemImage: "pin", startsSection: true,
                     shortcut: "⌘."
                 ) {
                     core.quicklinkCoordinator.toggleQuicklinkPinned(id: quicklink.id)
@@ -177,7 +177,7 @@ enum QuicklinkActionsMenu {
         if QuicklinkCoordinator.revealablePath(of: quicklink) != nil {
             items.append(
                 PopoverMenuItem(
-                    title: String(localized: "Show in Finder"), systemImage: "folder", startsSection: true,
+                    localizedTitle: "Show in Finder", systemImage: "folder", startsSection: true,
                     shortcut: "⌘F"
                 ) {
                     core.quicklinkCoordinator.showQuicklinkInFinder(quicklink)
@@ -185,7 +185,7 @@ enum QuicklinkActionsMenu {
         }
         items.append(
             PopoverMenuItem(
-                title: String(localized: "Delete Quicklink"), systemImage: "trash", startsSection: true,
+                localizedTitle: "Delete Quicklink", systemImage: "trash", startsSection: true,
                 shortcut: "⌃X", isDestructive: true
             ) {
                 Task { await core.quicklinkCoordinator.deleteQuicklink(id: quicklink.id) }

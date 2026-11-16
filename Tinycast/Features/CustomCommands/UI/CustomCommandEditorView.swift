@@ -177,7 +177,7 @@ struct CustomCommandEditorView: View {
     private func showIconMenu() {
         let items =
             [
-                PopoverMenuItem(title: String(localized: "Automatic"), systemImage: CustomCommand.sfSymbol) {
+                PopoverMenuItem(localizedTitle: "Automatic", systemImage: CustomCommand.sfSymbol) {
                     editor.iconSymbol = nil
                 }
             ]

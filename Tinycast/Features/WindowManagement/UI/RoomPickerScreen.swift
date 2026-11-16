@@ -29,13 +29,15 @@ struct RoomPickerScreen: PaletteScreen {
 
     var rows: [RoomPickerRow] { coordinator.pickerRows(for: vm.query) }
 
-    var primaryActionTitle: String {
+    var primaryActionTitle: String { primaryActionResource.resolved() }
+
+    private var primaryActionResource: LocalizedStringResource {
         let rows = rows
         let name = session.roomName
-        let add = String(localized: "Add to “\(name)”")
+        let add: LocalizedStringResource = "Add to “\(name)”"
         guard rows.indices.contains(vm.selection) else { return add }
         return session.picked.contains(rows[vm.selection].pick)
-            ? String(localized: "Remove from “\(name)”") : add
+            ? "Remove from “\(name)”" : add
     }
 
     func activate(at selection: Int) {
@@ -57,12 +59,12 @@ struct RoomPickerScreen: PaletteScreen {
             header: session.roomName,
             items: [
                 PopoverMenuItem(
-                    title: primaryActionTitle, systemImage: "checkmark.circle", shortcut: "↵"
+                    localizedTitle: primaryActionResource, systemImage: "checkmark.circle", shortcut: "↵"
                 ) {
                     activate(at: selection)
                 },
                 PopoverMenuItem(
-                    title: String(localized: "Save Room"), systemImage: Room.sfSymbol, shortcut: "⌘↵"
+                    localizedTitle: "Save Room", systemImage: Room.sfSymbol, shortcut: "⌘↵"
                 ) {
                     coordinator.savePicked()
                 }

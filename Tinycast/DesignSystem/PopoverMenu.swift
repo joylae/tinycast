@@ -17,6 +17,7 @@ enum PopoverMenuIcon: Equatable {
 
 struct PopoverMenuItem {
     let title: String
+    let englishTitle: String?
     let icon: PopoverMenuIcon
     let isLoading: Bool
     let isEnabled: Bool
@@ -32,11 +33,13 @@ struct PopoverMenuItem {
     var isSelectable: Bool { isEnabled && !isLoading }
 
     init(
-        title: String, icon: PopoverMenuIcon, isLoading: Bool = false, isEnabled: Bool = true,
+        title: String, englishTitle: String? = nil, icon: PopoverMenuIcon,
+        isLoading: Bool = false, isEnabled: Bool = true,
         sectionTitle: String? = nil, startsSection: Bool = false, shortcut: String? = nil,
         detail: String? = nil, isDestructive: Bool = false, action: @escaping () -> Void
     ) {
         self.title = title
+        self.englishTitle = englishTitle
         self.icon = icon
         self.isLoading = isLoading
         self.isEnabled = isEnabled
@@ -46,6 +49,32 @@ struct PopoverMenuItem {
         self.detail = detail
         self.isDestructive = isDestructive
         self.action = action
+    }
+
+    init(
+        localizedTitle: LocalizedStringResource, icon: PopoverMenuIcon,
+        isLoading: Bool = false, isEnabled: Bool = true,
+        sectionTitle: String? = nil, startsSection: Bool = false, shortcut: String? = nil,
+        detail: String? = nil, isDestructive: Bool = false, action: @escaping () -> Void
+    ) {
+        self.init(
+            title: localizedTitle.resolved(), englishTitle: localizedTitle.englishSource(), icon: icon,
+            isLoading: isLoading, isEnabled: isEnabled, sectionTitle: sectionTitle,
+            startsSection: startsSection, shortcut: shortcut, detail: detail,
+            isDestructive: isDestructive, action: action)
+    }
+
+    init(
+        localizedTitle: LocalizedStringResource, systemImage: String,
+        isLoading: Bool = false, isEnabled: Bool = true,
+        sectionTitle: String? = nil, startsSection: Bool = false, shortcut: String? = nil,
+        isDestructive: Bool = false, action: @escaping () -> Void
+    ) {
+        self.init(
+            localizedTitle: localizedTitle, icon: .symbol(systemImage),
+            isLoading: isLoading, isEnabled: isEnabled, sectionTitle: sectionTitle,
+            startsSection: startsSection, shortcut: shortcut,
+            isDestructive: isDestructive, action: action)
     }
 
     init(

@@ -43,13 +43,13 @@ enum Fallback: Hashable, Sendable {
         }
     }
 
-    var openVerb: String {
+    var openVerb: LocalizedStringResource {
         switch self {
-        case .builtin(.quickAI): return String(localized: "Ask Quick AI")
-        case .builtin(.searchFiles): return String(localized: "Search Files")
-        case .builtin(.runShellCommand): return String(localized: "Run Shell Command")
-        case .builtin(.define): return String(localized: "Define Word")
-        case .quicklink: return String(localized: "Open Quicklink")
+        case .builtin(.quickAI): return "Ask Quick AI"
+        case .builtin(.searchFiles): return "Search Files"
+        case .builtin(.runShellCommand): return "Run Shell Command"
+        case .builtin(.define): return "Define Word"
+        case .quicklink: return "Open Quicklink"
         }
     }
 

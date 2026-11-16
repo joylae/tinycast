@@ -345,6 +345,7 @@ run PaletteFilterTests     Tinycast/Palette/PaletteMode.swift \
                            Tinycast/Features/Quicklinks/Model/QuicklinkDestination.swift \
                            Tinycast/Features/CustomCommands/Model/CustomCommand.swift
 run ActionMenuSearchTests  Tinycast/Palette/ActionMenuSearchQuery.swift \
+                            Tinycast/Platform/Pinyin.swift \
                             Tinycast/Features/Launcher/Model/SearchRelevance.swift
 run PaletteShortcutTests   Tinycast/Palette/PaletteShortcut.swift
 run ASCIILayoutTests       Tinycast/Platform/ASCIIKeyboardLayout.swift

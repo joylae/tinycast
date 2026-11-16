@@ -91,5 +91,13 @@ struct LocalizedResourceTests {
             let resolved = resource.resolved()
             check("\(language) \(label)", resolved == expected, "\(resolved) instead of \(expected)")
         }
+        let paste: LocalizedStringResource = "Paste to \(name)"
+        check("\(language) English action name", LocalizedStringResource("Copy").englishSource() == "Copy")
+        check("\(language) English action arguments", paste.englishSource() == "Paste to Notes")
+        let noun: LocalizedStringResource = "Emoji"
+        let pin: LocalizedStringResource = "Pin \(noun)"
+        check("\(language) nested English action name", pin.englishSource() == "Pin Emoji")
+        let contextual = LocalizedStringResource("apple-shortcuts-section", defaultValue: "Shortcuts")
+        check("\(language) contextual English name", contextual.englishSource() == "Shortcuts")
     }
 }

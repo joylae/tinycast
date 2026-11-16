@@ -138,35 +138,35 @@ enum FileSearchActionsMenu {
         let items =
             [
                 PopoverMenuItem(
-                    title: result.isDirectory
-                        ? String(localized: "Open Folder") : String(localized: "Open File"),
+                    localizedTitle: result.isDirectory
+                        ? "Open Folder" : "Open File",
                     systemImage: result.isDirectory ? "folder" : "doc", shortcut: "↵"
                 ) { coordinator.open(result) },
                 PopoverMenuItem(
-                    title: String(localized: "Show in Finder"), systemImage: "folder", shortcut: "⌘↵"
+                    localizedTitle: "Show in Finder", systemImage: "folder", shortcut: "⌘↵"
                 ) { coordinator.showInFinder(result) },
-                PopoverMenuItem(title: String(localized: "Share…"), systemImage: "square.and.arrow.up") {
+                PopoverMenuItem(localizedTitle: "Share…", systemImage: "square.and.arrow.up") {
                     coordinator.share(result)
                 }
             ] + favorites.items + [
                 PopoverMenuItem(
-                    title: String(localized: "Copy File"), systemImage: "doc.on.clipboard",
+                    localizedTitle: "Copy File", systemImage: "doc.on.clipboard",
                     startsSection: true,
                     shortcut: "⇧⌘C"
                 ) { coordinator.copyFile(result) },
                 PopoverMenuItem(
-                    title: target.map { String(localized: "Paste File to \($0.name)") }
-                        ?? String(localized: "Paste File"),
+                    localizedTitle: target.map { LocalizedStringResource("Paste File to \($0.name)") }
+                        ?? "Paste File",
                     icon: .paste(target, fallback: "doc.on.clipboard"), shortcut: "⇧⌘V"
                 ) { coordinator.pasteFile(result) },
                 PopoverMenuItem(
-                    title: String(localized: "Copy Name"), systemImage: "doc.on.clipboard", shortcut: "⌥⌘C"
+                    localizedTitle: "Copy Name", systemImage: "doc.on.clipboard", shortcut: "⌥⌘C"
                 ) { coordinator.copyName(result) },
                 PopoverMenuItem(
-                    title: String(localized: "Copy Path"), systemImage: "doc.on.clipboard", shortcut: "⌃⌘C"
+                    localizedTitle: "Copy Path", systemImage: "doc.on.clipboard", shortcut: "⌃⌘C"
                 ) { coordinator.copyPath(result) },
                 PopoverMenuItem(
-                    title: String(localized: "Move to Trash"), systemImage: "trash", startsSection: true,
+                    localizedTitle: "Move to Trash", systemImage: "trash", startsSection: true,
                     shortcut: "⌃X", isDestructive: true
                 ) { coordinator.trash(result) }
             ]

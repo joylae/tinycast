@@ -38,7 +38,7 @@ struct EmojiScreen: PaletteScreen {
     /// Flat grid order across sections — what the selection indexes.
     var rows: [EmojiEntry] { sections.flatMap(\.entries) }
 
-    var primaryActionTitle: String { vm.pasteTarget?.pasteTitle ?? String(localized: "Paste") }
+    var primaryActionTitle: String { vm.pasteTarget?.pasteTitle.resolved() ?? String(localized: "Paste") }
 
     private func entry(at selection: Int) -> EmojiEntry? {
         let rows = rows
@@ -188,51 +188,51 @@ enum EmojiActionsMenu {
         let noun = entry.category.itemTitle
         var items = [
             PopoverMenuItem(
-                title: target?.pasteTitle ?? String(localized: "Paste"),
+                localizedTitle: target?.pasteTitle ?? "Paste",
                 icon: .paste(target, fallback: "doc.on.clipboard"), shortcut: "↵"
             ) {
                 core.emojiCoordinator.pasteEmoji(entry)
             },
             PopoverMenuItem(
-                title: String(localized: "Copy to Clipboard"), systemImage: "doc.on.doc", shortcut: "⌘↵"
+                localizedTitle: "Copy to Clipboard", systemImage: "doc.on.doc", shortcut: "⌘↵"
             ) {
                 core.emojiCoordinator.copyEmoji(entry)
             },
             PopoverMenuItem(
-                title: String(localized: "Paste and Keep Window Open"),
+                localizedTitle: "Paste and Keep Window Open",
                 icon: .paste(target, fallback: "macwindow"), shortcut: "⌥↵"
             ) {
                 core.emojiCoordinator.pasteEmojiKeepingWindowOpen(entry)
             },
             PopoverMenuItem(
-                title: pinPosition == nil
-                    ? String(localized: "Pin \(noun)") : String(localized: "Unpin \(noun)"),
+                localizedTitle: pinPosition == nil
+                    ? "Pin \(noun)" : "Unpin \(noun)",
                 systemImage: pinPosition == nil ? "pin" : "pin.slash",
                 startsSection: true, shortcut: "⌘.", action: togglePin)
         ]
         if let pinPosition {
             items.append(
                 PopoverMenuItem(
-                    title: String(localized: "Move Up in Pinned"), systemImage: "arrow.up",
+                    localizedTitle: "Move Up in Pinned", systemImage: "arrow.up",
                     isEnabled: pinPosition > 0, shortcut: "⌥⌘↑"
                 ) { movePin(-1) })
             items.append(
                 PopoverMenuItem(
-                    title: String(localized: "Move Down in Pinned"), systemImage: "arrow.down",
+                    localizedTitle: "Move Down in Pinned", systemImage: "arrow.down",
                     isEnabled: pinPosition < pinCount - 1, shortcut: "⌥⌘↓"
                 ) { movePin(1) })
         }
         items.append(contentsOf: [
             PopoverMenuItem(
-                title: String(localized: "Actual Size"), systemImage: "magnifyingglass",
+                localizedTitle: "Actual Size", systemImage: "magnifyingglass",
                 isEnabled: canZoom(.actualSize), startsSection: true, shortcut: "⌘0"
             ) { zoom(.actualSize) },
             PopoverMenuItem(
-                title: String(localized: "Zoom In"), systemImage: "plus.magnifyingglass",
+                localizedTitle: "Zoom In", systemImage: "plus.magnifyingglass",
                 isEnabled: canZoom(.zoomIn), shortcut: "⌘+"
             ) { zoom(.zoomIn) },
             PopoverMenuItem(
-                title: String(localized: "Zoom Out"), systemImage: "minus.magnifyingglass",
+                localizedTitle: "Zoom Out", systemImage: "minus.magnifyingglass",
                 isEnabled: canZoom(.zoomOut), shortcut: "⌘-"
             ) { zoom(.zoomOut) }
         ])

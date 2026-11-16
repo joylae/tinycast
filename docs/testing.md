@@ -116,7 +116,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `FileIndexTests` | `FileIndexCrawler`, `FileIndexSnapshot`, `FileIndex`: a real fixture crawled, written, mapped, searched and live-updated |
 | `FileSearchSessionTests` | serialized query execution, coalescing, cancellation and refresh |
 | `MenuSearchTests` | `MenuSearch/Model/` decisions, `MenuSearch/Service/` session filtering, the shared `FuzzyMatch` scorer |
-| `ActionMenuSearchTests` | Action-menu query normalization and shared fuzzy matching |
+| `ActionMenuSearchTests` | Action-menu query normalization, fuzzy matching, full pinyin, initials and English source names |
 | `AppInstallationTests` | Multiple app copies and app-wide preferences; file-favorite persistence, mixed ordering, hidden slots and restoration through the existing favorite key list |
 | `RankingTests` | `Launcher/Model/LauncherRankingStore.swift` |
 | `ScopesTests` | `Launcher/Model/SearchScopes.swift` |

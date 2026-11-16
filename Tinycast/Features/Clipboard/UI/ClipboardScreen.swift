@@ -16,7 +16,7 @@ struct ClipboardScreen: PaletteScreen {
     var primaryActionTitle: String {
         let defaultAction = core.settings.clipboardDefaultAction
         let action = item(at: vm.selection).flatMap { defaultAction.action(for: .return, on: $0) }
-        return (action ?? defaultAction).title(pastingInto: vm.pasteTarget)
+        return (action ?? defaultAction).title(pastingInto: vm.pasteTarget).resolved()
     }
 
     private func item(at selection: Int) -> ClipboardItem? {
@@ -177,7 +177,7 @@ enum ClipboardActionsMenu {
         var items: [PopoverMenuItem] = ClipboardChord.allCases.compactMap { chord in
             defaultAction.action(for: chord, on: item).map { action in
                 PopoverMenuItem(
-                    title: action.title(pastingInto: target), icon: icon(for: action, target: target),
+                    localizedTitle: action.title(pastingInto: target), icon: icon(for: action, target: target),
                     shortcut: chord.label
                 ) {
                     core.clipboardCoordinator.perform(action, on: item)
@@ -186,7 +186,7 @@ enum ClipboardActionsMenu {
         }
         items.append(
             PopoverMenuItem(
-                title: String(localized: "Paste and Keep Window Open"),
+                localizedTitle: "Paste and Keep Window Open",
                 icon: .paste(target, fallback: "macwindow"),
                 shortcut: "⌥↵"
             ) {
@@ -195,7 +195,7 @@ enum ClipboardActionsMenu {
         if item.kind == .text {
             items.append(
                 PopoverMenuItem(
-                    title: String(localized: "Edit Entry"), systemImage: "pencil", startsSection: true,
+                    localizedTitle: "Edit Entry", systemImage: "pencil", startsSection: true,
                     shortcut: "⌘E"
                 ) {
                     Task { await core.clipboardCoordinator.editClip(item) }
@@ -203,7 +203,7 @@ enum ClipboardActionsMenu {
         }
         items.append(
             PopoverMenuItem(
-                title: item.isPinned ? String(localized: "Unpin Entry") : String(localized: "Pin Entry"),
+                localizedTitle: item.isPinned ? "Unpin Entry" : "Pin Entry",
                 systemImage: item.isPinned ? "pin.slash" : "pin", startsSection: item.kind != .text,
                 shortcut: "⌘."
             ) {
@@ -212,7 +212,7 @@ enum ClipboardActionsMenu {
         if item.offersTextExtraction {
             items.append(
                 PopoverMenuItem(
-                    title: String(localized: "Copy Text"), systemImage: "doc.text.viewfinder",
+                    localizedTitle: "Copy Text", systemImage: "doc.text.viewfinder",
                     shortcut: "⇧⌘T"
                 ) {
                     core.clipboardCoordinator.copyImageText(item)
@@ -221,31 +221,31 @@ enum ClipboardActionsMenu {
         if item.kind != .text {
             items.append(
                 PopoverMenuItem(
-                    title: String(localized: "Show in Finder"), systemImage: "folder", shortcut: "⌘F"
+                    localizedTitle: "Show in Finder", systemImage: "folder", shortcut: "⌘F"
                 ) {
                     core.clipboardCoordinator.revealClip(item)
                 })
         }
         if item.kind == .file {
             items.append(
-                PopoverMenuItem(title: String(localized: "Open"), systemImage: "arrow.up.forward.app") {
+                PopoverMenuItem(localizedTitle: "Open", systemImage: "arrow.up.forward.app") {
                     core.clipboardCoordinator.openClip(item)
                 })
             items.append(
-                PopoverMenuItem(title: String(localized: "Copy Path"), systemImage: "doc.on.clipboard") {
+                PopoverMenuItem(localizedTitle: "Copy Path", systemImage: "doc.on.clipboard") {
                     core.clipboardCoordinator.copyClipPath(item)
                 })
         }
         items.append(
             PopoverMenuItem(
-                title: String(localized: "Delete Entry"), systemImage: "trash", startsSection: true,
+                localizedTitle: "Delete Entry", systemImage: "trash", startsSection: true,
                 shortcut: "⌃X", isDestructive: true
             ) {
                 store.remove(item)
             })
         items.append(
             PopoverMenuItem(
-                title: String(localized: "Delete All Entries"), systemImage: "trash", shortcut: "⌃⇧X",
+                localizedTitle: "Delete All Entries", systemImage: "trash", shortcut: "⌃⇧X",
                 isDestructive: true
             ) {
                 Task { await core.clipboardCoordinator.deleteAllClips() }
@@ -277,12 +277,12 @@ enum ClipboardActionsMenu {
 }
 
 extension ClipboardDefaultAction {
-    func title(pastingInto target: PasteTarget?) -> String {
-        guard let target else { return title }
+    func title(pastingInto target: PasteTarget?) -> LocalizedStringResource {
         switch self {
-        case .paste: return String(localized: "Paste to \(target.name)")
-        case .copy: return title
-        case .pastePlainText: return String(localized: "Paste as Plain Text to \(target.name)")
+        case .paste: return target.map { "Paste to \($0.name)" } ?? "Paste"
+        case .copy: return "Copy to Clipboard"
+        case .pastePlainText:
+            return target.map { "Paste as Plain Text to \($0.name)" } ?? "Paste as Plain Text"
         }
     }
 }

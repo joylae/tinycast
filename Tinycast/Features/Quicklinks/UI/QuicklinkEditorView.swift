@@ -205,7 +205,7 @@ struct QuicklinkEditorView: View {
     private func showIconMenu() {
         let items =
             [
-                PopoverMenuItem(title: String(localized: "Automatic"), systemImage: Quicklink.sfSymbol) {
+                PopoverMenuItem(localizedTitle: "Automatic", systemImage: Quicklink.sfSymbol) {
                     editor.iconSymbol = nil
                 }
             ]
@@ -268,7 +268,7 @@ struct QuicklinkEditorView: View {
         let applications = appIndex.apps.filter { $0.kind == .application && $0.bundleID != nil }
         let items =
             [
-                PopoverMenuItem(title: String(localized: "Default app"), icon: .blank) {
+                PopoverMenuItem(localizedTitle: "Default app", icon: .blank) {
                     editor.openWithBundleID = nil
                 }
             ]

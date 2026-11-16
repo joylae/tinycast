@@ -25,29 +25,29 @@ struct AIScreen: PaletteScreen {
         if chat.isStreaming {
             items.append(
                 PopoverMenuItem(
-                    title: String(localized: "Stop Response"), systemImage: "stop.fill", shortcut: "⌘."
+                    localizedTitle: "Stop Response", systemImage: "stop.fill", shortcut: "⌘."
                 ) {
                     coordinator.stopResponse()
                 })
         }
         items.append(
             PopoverMenuItem(
-                title: chat.session.messages.isEmpty
-                    ? String(localized: "Open AI Chat") : String(localized: "Continue in AI Chat"),
+                localizedTitle: chat.session.messages.isEmpty
+                    ? "Open AI Chat" : "Continue in AI Chat",
                 systemImage: "bubble.left.and.bubble.right", shortcut: "⌘J"
             ) {
                 coordinator.continueInChat()
             })
         items.append(
             PopoverMenuItem(
-                title: String(localized: "New Chat"), systemImage: "plus.bubble", shortcut: "⌘N"
+                localizedTitle: "New Chat", systemImage: "plus.bubble", shortcut: "⌘N"
             ) {
                 coordinator.startNewChat()
             })
         if canRegenerate {
             items.append(
                 PopoverMenuItem(
-                    title: String(localized: "Regenerate Response"), systemImage: "arrow.clockwise",
+                    localizedTitle: "Regenerate Response", systemImage: "arrow.clockwise",
                     shortcut: "⌘R"
                 ) {
                     coordinator.regenerate()
@@ -56,7 +56,7 @@ struct AIScreen: PaletteScreen {
         if chat.lastAssistantText != nil {
             items.append(
                 PopoverMenuItem(
-                    title: String(localized: "Copy Last Response"), systemImage: "doc.on.doc",
+                    localizedTitle: "Copy Last Response", systemImage: "doc.on.doc",
                     startsSection: true,
                     shortcut: "⇧⌘C"
                 ) {
@@ -66,7 +66,7 @@ struct AIScreen: PaletteScreen {
         if !chat.pendingAttachments.isEmpty {
             items.append(
                 PopoverMenuItem(
-                    title: String(localized: "Remove Attachments"), systemImage: "paperclip",
+                    localizedTitle: "Remove Attachments", systemImage: "paperclip",
                     startsSection: chat.lastAssistantText == nil
                 ) {
                     coordinator.clearAttachments()
@@ -74,7 +74,7 @@ struct AIScreen: PaletteScreen {
         }
         items.append(
             PopoverMenuItem(
-                title: String(localized: "Chat History"), systemImage: "clock.arrow.circlepath",
+                localizedTitle: "Chat History", systemImage: "clock.arrow.circlepath",
                 startsSection: true,
                 shortcut: "⌘Y"
             ) {
@@ -82,7 +82,7 @@ struct AIScreen: PaletteScreen {
             })
         items.append(
             PopoverMenuItem(
-                title: String(localized: "AI Settings"), systemImage: "slider.horizontal.3",
+                localizedTitle: "AI Settings", systemImage: "slider.horizontal.3",
                 shortcut: "⌥⌘,"
             ) {
                 chatCoordinator.showSettings()

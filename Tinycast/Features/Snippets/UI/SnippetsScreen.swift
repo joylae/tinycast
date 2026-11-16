@@ -12,7 +12,7 @@ struct SnippetsScreen: PaletteScreen {
 
     private var defaultAction: SnippetDefaultAction { core.settings.snippetDefaultAction }
 
-    var primaryActionTitle: String { defaultAction.menuTitle }
+    var primaryActionTitle: String { defaultAction.menuTitle.resolved() }
 
     private func record(at selection: Int) -> StoredSnippet? {
         let rows = rows
@@ -105,30 +105,30 @@ enum SnippetActionsMenu {
                 item(defaultAction, shortcut: "↵", record: record, core: core),
                 item(defaultAction.alternate, shortcut: "⌘↵", record: record, core: core),
                 PopoverMenuItem(
-                    title: String(localized: "Edit Snippet"), systemImage: "pencil", startsSection: true,
+                    localizedTitle: "Edit Snippet", systemImage: "pencil", startsSection: true,
                     shortcut: "⌘E"
                 ) {
                     core.snippetCoordinator.editSnippet(record)
                 },
                 PopoverMenuItem(
-                    title: String(localized: "Create Snippet"), systemImage: "plus", shortcut: "⌘N"
+                    localizedTitle: "Create Snippet", systemImage: "plus", shortcut: "⌘N"
                 ) {
                     core.snippetCoordinator.editSnippet(nil)
                 },
                 PopoverMenuItem(
-                    title: isPinned ? String(localized: "Unpin Snippet") : String(localized: "Pin Snippet"),
+                    localizedTitle: isPinned ? "Unpin Snippet" : "Pin Snippet",
                     systemImage: isPinned ? "pin.slash" : "pin", shortcut: "⌘."
                 ) {
                     Task { await core.snippetCoordinator.toggleSnippetPinned(id: record.id) }
                 },
                 PopoverMenuItem(
-                    title: String(localized: "Show in Finder"), systemImage: "folder", startsSection: true,
+                    localizedTitle: "Show in Finder", systemImage: "folder", startsSection: true,
                     shortcut: "⌘F"
                 ) {
                     core.snippetCoordinator.showSnippetInFinder(record)
                 },
                 PopoverMenuItem(
-                    title: String(localized: "Delete Snippet"), systemImage: "trash", startsSection: true,
+                    localizedTitle: "Delete Snippet", systemImage: "trash", startsSection: true,
                     shortcut: "⌃X", isDestructive: true
                 ) {
                     Task { await core.snippetCoordinator.deleteSnippet(id: record.id) }
@@ -139,17 +139,17 @@ enum SnippetActionsMenu {
     private static func item(
         _ action: SnippetDefaultAction, shortcut: String, record: StoredSnippet, core: AppCore
     ) -> PopoverMenuItem {
-        PopoverMenuItem(title: action.menuTitle, systemImage: action.systemImage, shortcut: shortcut) {
+        PopoverMenuItem(localizedTitle: action.menuTitle, systemImage: action.systemImage, shortcut: shortcut) {
             core.snippetCoordinator.performFromPalette(action, id: record.id)
         }
     }
 }
 
 extension SnippetDefaultAction {
-    fileprivate var menuTitle: String {
+    fileprivate var menuTitle: LocalizedStringResource {
         switch self {
-        case .paste: String(localized: "Paste Snippet")
-        case .copy: String(localized: "Copy Snippet")
+        case .paste: "Paste Snippet"
+        case .copy: "Copy Snippet"
         }
     }
 

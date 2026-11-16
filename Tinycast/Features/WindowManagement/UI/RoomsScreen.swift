@@ -66,30 +66,30 @@ struct RoomsScreen: PaletteScreen {
             header: room.name,
             items: [
                 PopoverMenuItem(
-                    title: String(localized: "Enter Room"), systemImage: Room.sfSymbol, shortcut: "↵"
+                    localizedTitle: "Enter Room", systemImage: Room.sfSymbol, shortcut: "↵"
                 ) {
                     coordinator.enterRoom(id: room.id)
                 },
                 PopoverMenuItem(
-                    title: String(localized: "Next Layout"), systemImage: "rectangle.3.group",
+                    localizedTitle: "Next Layout", systemImage: "rectangle.3.group",
                     shortcut: "⇥"
                 ) {
                     coordinator.cycleLayout(of: room, backwards: false)
                 },
                 PopoverMenuItem(
-                    title: String(localized: "Remember Arrangement"),
+                    localizedTitle: "Remember Arrangement",
                     systemImage: "rectangle.dashed.badge.record",
                     startsSection: true
                 ) {
                     coordinator.rememberArrangement(of: room)
                 },
                 PopoverMenuItem(
-                    title: String(localized: "Choose Windows…"), systemImage: "macwindow.badge.plus"
+                    localizedTitle: "Choose Windows…", systemImage: "macwindow.badge.plus"
                 ) {
                     coordinator.editWindows(of: room)
                 },
                 PopoverMenuItem(
-                    title: String(localized: "Delete Room"), systemImage: "trash", startsSection: true,
+                    localizedTitle: "Delete Room", systemImage: "trash", startsSection: true,
                     shortcut: "⌃X",
                     isDestructive: true
                 ) {

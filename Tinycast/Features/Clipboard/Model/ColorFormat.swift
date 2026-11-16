@@ -20,6 +20,17 @@ enum ColorFormat: CaseIterable, Hashable, Sendable {
         }
     }
 
+    var englishName: String {
+        switch self {
+        case .hex: "Hex"
+        case .hexWithAlpha: "Hex with Alpha"
+        case .rgba: "RGBA"
+        case .hsl: "HSL"
+        case .hslWithAlpha: "HSL with Alpha"
+        case .oklch: "Oklch"
+        }
+    }
+
     func string(for color: ColorValue) -> String {
         switch self {
         case .hex: return ColorDigits.hex(color, includingAlpha: false)

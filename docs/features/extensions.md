@@ -414,8 +414,10 @@ screens hold (see [palette.md](palette.md)).
   Section boundaries add the list inset (8pt) above and below their separator without moving
   ordinary rows; a capped panel ends mid-row, so its edge never lands on a separator, and every
   hairline is one device pixel. The title shares the elastic scroller with the actions. A native,
-  row-height search field below it filters titles through the launcher's fuzzy matcher, preserves
-  section boundaries and centres **No Results** in one row when empty; the scrolling edge beside that
+  row-height search field below it filters titles through the launcher's fuzzy matcher, including
+  full pinyin and initials for Chinese titles. It searches the title supplied by the extension;
+  Chinese-only actions have no English source to search and are never automatically translated.
+  It preserves section boundaries and centres **No Results** in one row when empty; the scrolling edge beside that
   field has no dissolve. The 8pt resting inset scrolls with the actions, so rows can reach the panel
   edge without shifting their initial position; hover keeps the shared 10pt menu-row corner. The
   panel opens and closes from its bottom-right attachment with extension-owned opacity and scale

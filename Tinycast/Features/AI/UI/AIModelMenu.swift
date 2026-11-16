@@ -19,13 +19,13 @@ enum AIModelMenu {
         if loading {
             items.insert(
                 PopoverMenuItem(
-                    title: String(localized: "Loading models…"), icon: .blank, isLoading: true
+                    localizedTitle: "Loading models…", icon: .blank, isLoading: true
                 ) {}, at: 0)
         }
         guard !items.isEmpty else {
             return PopoverMenuContent(items: [
                 PopoverMenuItem(
-                    title: String(localized: "Configure AI"), systemImage: "slider.horizontal.3"
+                    localizedTitle: "Configure AI", systemImage: "slider.horizontal.3"
                 ) {
                     coordinator.showSettings()
                 }
@@ -59,7 +59,7 @@ enum AIModelMenu {
         if items.count > 1 {
             items.append(
                 PopoverMenuItem(
-                    title: String(localized: "Remove All"), systemImage: "xmark.circle",
+                    localizedTitle: "Remove All", systemImage: "xmark.circle",
                     startsSection: true
                 ) {
                     coordinator.clearAttachments(in: chat)

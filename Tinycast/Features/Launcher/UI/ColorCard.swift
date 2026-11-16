@@ -41,7 +41,7 @@ enum ColorActionsMenu {
             header: String(localized: "Copy Color as…"),
             items: ColorFormat.offered(for: color).map { format in
                 PopoverMenuItem(
-                    title: format.title, icon: .blank,
+                    title: format.title, englishTitle: format.englishName, icon: .blank,
                     shortcut: format == primary ? "↵" : nil, detail: format.string(for: color)
                 ) {
                     core.clipboardCoordinator.copyColor(color, as: format)

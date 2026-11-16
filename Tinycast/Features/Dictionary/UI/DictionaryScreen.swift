@@ -22,12 +22,12 @@ struct DictionaryScreen: PaletteScreen {
             header: entry.term,
             items: [
                 PopoverMenuItem(
-                    title: String(localized: "Copy Definition"), systemImage: "doc.on.doc", shortcut: "↵"
+                    localizedTitle: "Copy Definition", systemImage: "doc.on.doc", shortcut: "↵"
                 ) {
                     core.dictionaryCoordinator.copy(entry)
                 },
                 PopoverMenuItem(
-                    title: String(localized: "Open in Dictionary"), systemImage: "book", shortcut: "⌘↵"
+                    localizedTitle: "Open in Dictionary", systemImage: "book", shortcut: "⌘↵"
                 ) {
                     core.dictionaryCoordinator.openInDictionary(entry)
                 }

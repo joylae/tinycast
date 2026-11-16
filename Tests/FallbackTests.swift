@@ -118,8 +118,8 @@ struct FallbackTests {
     // MARK: - Verbs
 
     static func verbs() {
-        var verbs = Fallback.Builtin.allCases.map { Fallback.builtin($0).openVerb }
-        verbs.append(Fallback.quicklink(UUID()).openVerb)
+        var verbs = Fallback.Builtin.allCases.map { Fallback.builtin($0).openVerb.key }
+        verbs.append(Fallback.quicklink(UUID()).openVerb.key)
         check("every fallback names its own action", verbs.allSatisfy { !$0.isEmpty })
         check("the verbs are distinct", Set(verbs).count == verbs.count, "got \(verbs)")
     }

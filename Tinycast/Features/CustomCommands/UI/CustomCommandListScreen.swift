@@ -44,14 +44,14 @@ struct CustomCommandListScreen: PaletteScreen {
             } ?? []
         items.append(
             PopoverMenuItem(
-                title: String(localized: "Create Custom Command"), systemImage: "plus", shortcut: "⌘N"
+                localizedTitle: "Create Custom Command", systemImage: "plus", shortcut: "⌘N"
             ) {
                 coordinator.editCustomCommand(nil)
             })
         if let command = selected {
             items.append(
                 PopoverMenuItem(
-                    title: String(localized: "Delete Custom Command"), systemImage: "trash",
+                    localizedTitle: "Delete Custom Command", systemImage: "trash",
                     startsSection: true, shortcut: "⌃X", isDestructive: true
                 ) {
                     Task { await coordinator.deleteCustomCommand(id: command.id) }
@@ -137,10 +137,10 @@ enum CustomCommandActionsMenu {
     ) -> [PopoverMenuItem] {
         [
             PopoverMenuItem(
-                title: String(localized: "Run Command"), systemImage: command.symbol, shortcut: "↵",
+                localizedTitle: "Run Command", systemImage: command.symbol, shortcut: "↵",
                 action: run),
             PopoverMenuItem(
-                title: String(localized: "Edit Custom Command"), systemImage: "pencil", shortcut: "⌘E"
+                localizedTitle: "Edit Custom Command", systemImage: "pencil", shortcut: "⌘E"
             ) {
                 coordinator.editCustomCommand(command)
             }

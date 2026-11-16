@@ -141,10 +141,10 @@ struct PopoverMenuItem {
     let title: String
     let action: () -> Void
     init(
-        title: String, systemImage: String, startsSection: Bool = false,
+        localizedTitle: LocalizedStringResource, systemImage: String, startsSection: Bool = false,
         shortcut: String? = nil, isDestructive: Bool = false, action: @escaping () -> Void
     ) {
-        self.title = title
+        self.title = String(localized: localizedTitle)
         self.action = action
     }
 }

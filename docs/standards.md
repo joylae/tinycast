@@ -259,9 +259,13 @@ the catalog (Xcode's own build does the same in the IDE). The six privacy prompt
   `FormRow`, `FeatureSwitchSection`, `SettingsEditorHeader`, `SettingsFilterField`.
 - **A `LocalizedStringResource` becomes a `String` through `resolved()`**, never `String(localized:)`:
   that overload can skip the bundle's string-table cache and reparse the whole table on every call.
+  Menu search uses `englishSource()` for its English title: plain keys pass through directly, while
+  arguments and contextual defaults resolve with the English locale.
 - **Everything that also carries runtime text keeps `String`**, and its literal callers write
-  `String(localized: "…")` — dialogs, HUD messages, `PopoverMenuItem`, AppKit menus and windows,
+  `String(localized: "…")` — dialogs, HUD messages, AppKit menus and windows,
   `LocalizedError`, and every model `title`. `Model/` files use it too; it is Foundation.
+- **Built-in menu actions use `PopoverMenuItem(localizedTitle:)`**, preserving the English source
+  for search alongside the resolved title. Runtime menu text uses `title:` verbatim.
 - **One sentence is one literal.** Never assemble one with `+` or from localized fragments: the
   translation has to be free to reorder it. A long one is a `"""` literal with `\` continuations.
   Interpolate data — a name, a count — never a phrase.

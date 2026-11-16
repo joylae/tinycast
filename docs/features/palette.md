@@ -532,8 +532,12 @@ transfers, keep their rows in one group.
 
 Every launcher Action Menu has a native, row-height search field. Footer menus place it below their
 rows; header menus place it above them. `ActionMenuSearchQuery` folds the shared fuzzy query once per
-menu rebuild, then each menu filters its own rows and preserves section boundaries. A search with no
-match keeps the header, when present, and centres **No Results** in one row. The list has no edge
+menu rebuild, then each menu filters its own rows and preserves section boundaries. Chinese titles
+also match full pinyin and initials through `Pinyin.aliases`. Built-in actions retain their English
+source through `PopoverMenuItem(localizedTitle:)`, including formatted arguments, so they remain searchable in English in every
+interface language. Runtime titles use `title:` and are never translated. Rows retain menu order;
+the strongest match across the displayed title, English source and pinyin drives the highlight.
+A search with no match keeps the header, when present, and centres **No Results** in one row. The list has no edge
 dissolve beside a search field. Its resting inset travels with the scroll content, so rows can reach
 the panel edge without moving their initial position. Footer menus add 30pt to the standard menu
 width; their hover keeps the shared 10pt menu-row corner.

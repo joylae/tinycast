@@ -14,7 +14,7 @@ enum AppActionsMenu {
         if let deepLink = core.launcherCoordinator.deepLink(for: app) {
             items.append(
                 PopoverMenuItem(
-                    title: String(localized: "Copy Deeplink"), systemImage: "link", shortcut: "⇧⌘C"
+                    localizedTitle: "Copy Deeplink", systemImage: "link", shortcut: "⇧⌘C"
                 ) {
                     core.launcherCoordinator.copyDeepLink(deepLink)
                 })
@@ -22,7 +22,7 @@ enum AppActionsMenu {
         if core.launcherRanking.hasRanking(for: app.preferenceKey) {
             items.append(
                 PopoverMenuItem(
-                    title: String(localized: "Reset Ranking"), systemImage: "arrow.counterclockwise"
+                    localizedTitle: "Reset Ranking", systemImage: "arrow.counterclockwise"
                 ) {
                     onResetRanking()
                 })
@@ -30,30 +30,30 @@ enum AppActionsMenu {
         // These carry their own Show in root search switch rather than a pane checkbox.
         let hidesFromRoot = app.kind == .quicklink || app.kind == .customCommand
         if isPersistent, app.canHideFromSearch || hidesFromRoot {
-            let title =
+            let title: LocalizedStringResource =
                 hidesFromRoot
-                ? String(localized: "Hide from Root Search") : String(localized: "Hide from Search")
+                ? "Hide from Root Search" : "Hide from Search"
             items.append(
                 PopoverMenuItem(
-                    title: title, systemImage: "eye.slash", shortcut: "⇧⌘H", action: onHideFromSearch))
+                    localizedTitle: title, systemImage: "eye.slash", shortcut: "⇧⌘H", action: onHideFromSearch))
         }
         if running, app.kind == .application {
             items.append(
                 PopoverMenuItem(
-                    title: String(localized: "Restart Application"), systemImage: "arrow.clockwise",
+                    localizedTitle: "Restart Application", systemImage: "arrow.clockwise",
                     startsSection: true, shortcut: "⌘R"
                 ) {
                     core.launcherCoordinator.restart(app)
                 })
             items.append(
                 PopoverMenuItem(
-                    title: String(localized: "Quit Application"), systemImage: "power", shortcut: "⌃⇧Q"
+                    localizedTitle: "Quit Application", systemImage: "power", shortcut: "⌃⇧Q"
                 ) {
                     core.launcherCoordinator.quit(app)
                 })
             items.append(
                 PopoverMenuItem(
-                    title: String(localized: "Force Quit Application"), systemImage: "xmark.circle",
+                    localizedTitle: "Force Quit Application", systemImage: "xmark.circle",
                     shortcut: "⌃⌥⇧Q"
                 ) {
                     core.launcherCoordinator.quit(app, force: true)
@@ -62,7 +62,7 @@ enum AppActionsMenu {
         if app.kind == .application, app.primaryInstallationID == nil {
             items.append(
                 PopoverMenuItem(
-                    title: String(localized: "Uninstall Application"), systemImage: "trash",
+                    localizedTitle: "Uninstall Application", systemImage: "trash",
                     startsSection: true, isDestructive: true
                 ) {
                     core.uninstallCoordinator.beginUninstall(app)
@@ -71,14 +71,14 @@ enum AppActionsMenu {
         if app.kind == .quicklink, let quicklink = core.quicklinks.quicklink(entryID: app.id) {
             items.append(
                 PopoverMenuItem(
-                    title: String(localized: "Copy Link"), systemImage: "doc.on.clipboard",
+                    localizedTitle: "Copy Link", systemImage: "doc.on.clipboard",
                     startsSection: true, shortcut: "⌃⌘C"
                 ) {
                     core.quicklinkCoordinator.copyQuicklink(id: quicklink.id)
                 })
             items.append(
                 PopoverMenuItem(
-                    title: String(localized: "Edit Quicklink"), systemImage: "pencil", shortcut: "⌘E"
+                    localizedTitle: "Edit Quicklink", systemImage: "pencil", shortcut: "⌘E"
                 ) {
                     core.quicklinkCoordinator.editQuicklink(quicklink)
                 })
@@ -88,9 +88,9 @@ enum AppActionsMenu {
                 let enabled = core.extensions.isBackgroundEnabled(for: app)
                 items.append(
                     PopoverMenuItem(
-                        title: enabled
-                            ? String(localized: "Disable Background Refresh")
-                            : String(localized: "Enable Background Refresh"),
+                        localizedTitle: enabled
+                            ? "Disable Background Refresh"
+                            : "Enable Background Refresh",
                         systemImage: enabled ? "pause.circle" : "play.circle", startsSection: true
                     ) {
                         core.extensions.toggleBackgroundRefresh(for: app)
@@ -98,7 +98,7 @@ enum AppActionsMenu {
                 if enabled {
                     items.append(
                         PopoverMenuItem(
-                            title: String(localized: "Refresh Now"), systemImage: "arrow.clockwise"
+                            localizedTitle: "Refresh Now", systemImage: "arrow.clockwise"
                         ) {
                             core.extensions.refreshNow(app)
                         })
@@ -106,14 +106,14 @@ enum AppActionsMenu {
             }
             items.append(
                 PopoverMenuItem(
-                    title: String(localized: "Configure Extension"), systemImage: "slider.horizontal.3",
+                    localizedTitle: "Configure Extension", systemImage: "slider.horizontal.3",
                     startsSection: true
                 ) {
                     core.extensionCoordinator.showExtensionSettings(for: app)
                 })
             items.append(
                 PopoverMenuItem(
-                    title: String(localized: "Uninstall Extension"), systemImage: "trash",
+                    localizedTitle: "Uninstall Extension", systemImage: "trash",
                     isDestructive: true
                 ) {
                     core.extensionCoordinator.confirmUninstall(app)
@@ -142,7 +142,7 @@ enum AppActionsMenu {
             }
         var items = [
             PopoverMenuItem(
-                title: app.kind.descriptor.openVerb.resolved(), systemImage: primarySymbol,
+                localizedTitle: app.kind.descriptor.openVerb, systemImage: primarySymbol,
                 shortcut: "↵"
             ) { core.launcherCoordinator.launch(app, searchQuery: searchQuery) }
         ]
@@ -151,7 +151,7 @@ enum AppActionsMenu {
         {
             items.append(
                 PopoverMenuItem(
-                    title: String(localized: "Edit Snippet"), systemImage: "pencil", shortcut: "⌘E"
+                    localizedTitle: "Edit Snippet", systemImage: "pencil", shortcut: "⌘E"
                 ) {
                     core.snippetCoordinator.editSnippet(record)
                 })
@@ -159,7 +159,7 @@ enum AppActionsMenu {
         if app.canRevealInFinder {
             items.append(
                 PopoverMenuItem(
-                    title: String(localized: "Show in Finder"), systemImage: "folder", shortcut: "⌘↵"
+                    localizedTitle: "Show in Finder", systemImage: "folder", shortcut: "⌘↵"
                 ) {
                     core.launcherCoordinator.showInFinder(app)
                 })

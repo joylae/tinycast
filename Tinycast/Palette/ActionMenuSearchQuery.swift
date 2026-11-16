@@ -11,8 +11,11 @@ struct ActionMenuSearchQuery {
         needle = trimmed.isEmpty ? nil : FuzzyMatch.Query(trimmed)
     }
 
-    func score(_ candidate: String) -> Int? {
+    func score(_ candidate: String, englishTitle: String? = nil) -> Int? {
         guard let needle else { return 0 }
-        return FuzzyMatch.score(needle, candidate: candidate)
+        let titles = [candidate] + (englishTitle.map { [$0] } ?? []) + Pinyin.aliases(for: candidate)
+        return titles.compactMap {
+            FuzzyMatch.score(needle, candidate: $0)
+        }.max()
     }
 }

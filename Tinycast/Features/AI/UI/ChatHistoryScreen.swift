@@ -101,26 +101,26 @@ enum ChatHistoryActionsMenu {
             header: conversation.displayTitle,
             items: [
                 PopoverMenuItem(
-                    title: String(localized: "Open Chat"), systemImage: "sparkles", shortcut: "↵"
+                    localizedTitle: "Open Chat", systemImage: "sparkles", shortcut: "↵"
                 ) {
                     coordinator.openChat(id: conversation.id)
                 },
                 PopoverMenuItem(
-                    title: String(localized: "Continue in AI Chat"),
+                    localizedTitle: "Continue in AI Chat",
                     systemImage: "bubble.left.and.bubble.right",
                     shortcut: "⌘J"
                 ) {
                     coordinator.continueInChat(id: conversation.id)
                 },
                 PopoverMenuItem(
-                    title: String(localized: "Delete Chat"), systemImage: "trash", startsSection: true,
+                    localizedTitle: "Delete Chat", systemImage: "trash", startsSection: true,
                     shortcut: "⌃X",
                     isDestructive: true
                 ) {
                     coordinator.deleteChat(id: conversation.id)
                 },
                 PopoverMenuItem(
-                    title: String(localized: "Delete All Chats"), systemImage: "trash", shortcut: "⌃⇧X",
+                    localizedTitle: "Delete All Chats", systemImage: "trash", shortcut: "⌃⇧X",
                     isDestructive: true
                 ) {
                     Task { await coordinator.deleteAllChats() }

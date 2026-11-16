@@ -162,25 +162,25 @@ enum CalcHistoryActionsMenu {
             header: core.calcNumberFormat.localizedExpression(entry.expression),
             items: [
                 PopoverMenuItem(
-                    title: String(localized: "Copy Answer"), systemImage: "doc.on.doc", shortcut: "↵"
+                    localizedTitle: "Copy Answer", systemImage: "doc.on.doc", shortcut: "↵"
                 ) {
                     core.calculatorCoordinator.copyHistoryEntry(entry)
                 },
                 PopoverMenuItem(
-                    title: String(localized: "Copy Expression"), systemImage: "doc.on.doc.fill",
+                    localizedTitle: "Copy Expression", systemImage: "doc.on.doc.fill",
                     shortcut: "⌘↵"
                 ) {
                     core.calculatorCoordinator.copyHistoryExpression(entry)
                 },
                 PopoverMenuItem(
-                    title: String(localized: "Delete Entry"), systemImage: "trash", startsSection: true,
+                    localizedTitle: "Delete Entry", systemImage: "trash", startsSection: true,
                     shortcut: "⌃X",
                     isDestructive: true
                 ) {
                     calcHistory.remove(entry)
                 },
                 PopoverMenuItem(
-                    title: String(localized: "Delete All Entries"), systemImage: "trash", shortcut: "⌃⇧X",
+                    localizedTitle: "Delete All Entries", systemImage: "trash", shortcut: "⌃⇧X",
                     isDestructive: true
                 ) {
                     Task { await core.calculatorCoordinator.deleteAllHistory() }

@@ -222,26 +222,26 @@ struct RootPaletteView: View {
             header: title,
             items: [
                 PopoverMenuItem(
-                    title: String(localized: "Changelog"),
+                    localizedTitle: "Changelog",
                     systemImage: "clock.arrow.trianglehead.2.counterclockwise.rotate.90"
                 ) {
                     if let url = URL(string: "https://github.com/\(ReleaseFeed.repository)/releases") {
                         openURL(url)
                     }
                 },
-                PopoverMenuItem(title: String(localized: "About Tinycast"), systemImage: "info.circle") {
+                PopoverMenuItem(localizedTitle: "About Tinycast", systemImage: "info.circle") {
                     core.settingsCoordinator.showAbout()
                 },
-                PopoverMenuItem(title: String(localized: "Support Tinycast"), systemImage: "heart") {
+                PopoverMenuItem(localizedTitle: "Support Tinycast", systemImage: "heart") {
                     core.supportCoordinator.showSupport()
                 },
                 PopoverMenuItem(
-                    title: String(localized: "Settings"), systemImage: "gearshape", shortcut: "⌘,"
+                    localizedTitle: "Settings", systemImage: "gearshape", shortcut: "⌘,"
                 ) {
                     core.settingsCoordinator.showSettings()
                 },
                 PopoverMenuItem(
-                    title: String(localized: "Quit \(appName)"),
+                    localizedTitle: "Quit \(appName)",
                     systemImage: "rectangle.portrait.and.arrow.right",
                     isDestructive: true
                 ) {
