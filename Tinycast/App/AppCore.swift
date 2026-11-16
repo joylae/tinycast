@@ -367,7 +367,10 @@ final class AppCore {
             hotKeys.modifierTapMonitor.healthTicker = healthTicker
             snippetListener.healthTicker = healthTicker
 
-            hotKeys.onTogglePalette = { [weak self] in self?.paletteCoordinator.togglePalette() }
+            hotKeys.onTogglePalette = { [weak self] in
+                guard let self, !isShowingDialog else { return }
+                paletteCoordinator.togglePalette()
+            }
             hotKeys.dictationEnabled = settings.dictationEnabled
             hotKeys.dictationHoldToTalk = settings.dictationMode == .pushToTalk
             hotKeys.onDictationPressed = { [weak self] in self?.dictationCoordinator.pressed() }

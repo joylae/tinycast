@@ -636,17 +636,14 @@ struct RootPaletteView: View {
                     if settings.compactMode, vm.mode == .launcher { vm.forceExpanded = true }
                     vm.query = ""
                 case .exitExtensionScreen:
-                    core.extensionCoordinator.exitExtensionScreen()
+                    core.extensionCoordinator.exitExtensionScreen(resetOnClose: true)
                 case .goBack:
                     goBack()
                 case .collapsePalette:
                     vm.forceExpanded = false
                     resetCompactSelection()
                 case .hidePalette:
-                    core.paletteCoordinator.hidePalette()
-                    if settings.escapeKeyBehavior == .closeAndPopToRoot {
-                        core.paletteCoordinator.popToRootNow()
-                    }
+                    core.paletteCoordinator.closePalette()
                 }
                 return .handled
             }

@@ -65,15 +65,12 @@ Window activation does not request another search refocus after a shortcut's arg
 Closing a palette menu explicitly restores search focus after its panel returns key status.
 `prepare` is one of four motions over the screen — see [Navigation](#navigation).
 
-Hiding schedules Pop to Root Search, and `PaletteWindowController.popToRoot` is its only path: the
-palette returns to the launcher _and_ chat starts a new conversation, at once or after
-`popToRootTimeout`, unless a re-summon inside that window consumes the pending reset first. An
-unfinished chat is a thing being done, exactly like a typed query, so the screen and the conversation
-are reset together rather than the screen alone. A reply still streaming is one exception — it was
-asked for, and resetting would throw the answer away. Nothing is lost either way: a conversation is
-written to Chat History, and the AI Chat window's sidebar, as soon as it has a message. The other is
-an extension's browser sign-in: while `ExtensionManager.isSigningIn`, hiding schedules no reset and a
+Hiding schedules Pop to Root Search: the palette returns to an empty launcher at once or after
+`popToRootTimeout`, unless a re-summon inside that window consumes the pending reset first. This
+resets the screen; Quick AI's `Opens To` policy controls its conversation lifetime. An extension's
+browser sign-in is an exception: while `ExtensionManager.isSigningIn`, hiding schedules no reset and a
 re-summon counts as preserved, because a reset would stop the command and cancel its sign-in.
+Closing through Escape resets immediately, regardless of that timeout.
 
 Each `PaletteMode` maps to one type conforming to `PaletteScreen`, and the protocol is what keeps the
 selection invariant honest: a screen exposes `rows` as its single source of visible order, and the
@@ -125,8 +122,10 @@ becomes the step back; a hidden one is being _summoned_, so the new screen is a 
 behind it. Every mode command and every global hotkey funnels through `showPalette`, which calls it —
 so typing "Clipboard History" at the root and pressing ↵ leaves a step back to the search that found
 it, while the Clipboard History hotkey does not. **The launcher is the exception, because it is the
-root** — ⌘Space over an open clipboard opens the root search with nothing behind it, rather than
-stacking the launcher over the screen it replaced. Nothing per-feature encodes this.
+root** — opening it explicitly clears the stack. The main palette shortcut hides any visible
+palette screen; pressing it again restores that screen, query and navigation before the configured
+Pop to Root Search timeout, or opens an empty launcher after it. With an immediate timeout, it always
+reopens the launcher. Confirmation dialogs block the main shortcut until dismissed.
 
 `PaletteState` holds the screens below `mode` as `[PaletteFrame]` — mode, query and selection, enough
 that returning looks like never having left — and offers four motions over it:
@@ -153,12 +152,14 @@ Scrolling a native form dismisses its menu before the control's anchor moves.
 
 **Escape clears a non-empty query before it leaves the screen**, so one press clears and the next
 leaves: an extension screen exits itself first (it keeps a stack the palette cannot see), then a
-pushed screen pops, and a root hides the palette. A focused inline argument field is a rung above the
+pushed screen pops, and a root closes the palette and immediately resets its navigation to the
+launcher. A focused inline argument field is a rung above the
 query, so Escape hands focus back to the search field first — the query that found the command is
 still there to be cleared by the next press. A bare backspace in an empty field takes the same step
 **but never closes**: on a root screen summoned by its own hotkey it falls to the root search, which
 is the step Escape would have taken had that screen been reached by typing its name. ⌘esc skips the
-whole stack for that same root search from any depth.
+whole stack for that same empty root search while the palette itself is key, keeping the window open.
+It does not handle the chord while a separate menu or confirmation dialog owns focus.
 
 `EscapeKeyBehavior` (General settings) can trade the walk back for the old behavior: under
 `closeAndPopToRoot` an empty field closes the window and resets it immediately, whatever Pop to Root

@@ -133,6 +133,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `emoji-search-test` | `Emoji/Service/EmojiIndex.swift`, `FrequentEmojiStore.swift`, `Scripts/gen-emoji.js`'s keyword format, multilingual search |
 | `command-escape-tap-test` | `Palette/CommandEscapeTap.swift` — dedicated run-loop dispatch while main is blocked, timeout recovery, stale actions, installation cancellation and teardown; private ports and unposted events only |
 | `palette-navigation-test` | `Palette/PaletteState.swift`'s screen motions — `prepare`, `replace`, `push`, `pop` — and hover arming, pointer drift, scroll disarming and highlight tokens |
+| `palette-coordinator-test` | Main-shortcut hide and restore across every mode, timeout resets and immediate close resets; shipped state and coordinator with recorded window effects |
 | `compact-bar-test` | Compact shortcut order, selection boundaries, zero-to-four slots, identifiers, isolated preferences and invalid settings-file rejection |
 | `palette-selection-test` | `Features/PaletteRowIndex.swift` |
 | `interface-size-test` | `DesignSystem/InterfaceMetrics.swift`, `Features/Settings/InterfaceSize.swift`, `Extensions/Model/ExtensionFormMetrics.swift` |
@@ -428,17 +429,22 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
 
 ### Core
 
-- Palette hotkey opens the launcher; pressing it again closes it; Escape clears a non-empty query,
-  then hides on a second press; clicking away closes it
+- Palette hotkey hides any visible palette screen; before Pop to Root Search times out, pressing it
+  again restores that screen, query and navigation. After timeout (including Immediately), it opens
+  an empty launcher. Clicking away retains the same timeout behavior.
+- Escape clears a non-empty query first; when it finally closes the palette, reopening through the
+  main shortcut always opens an empty launcher, even with a long Pop to Root Search timeout.
 - Search a mode command (Clipboard History, Search Emoji, Search Quicklinks, Search Files, Quick AI)
   and run it: Escape returns to the launcher **with the query still typed and the row still
   selected**, and the next press clears it. The same screen from its own global hotkey hides the
-  palette instead, and shows its own header icon rather than a back chevron
+  palette instead and immediately resets to an empty launcher; its header back chevron still closes
+  a directly summoned screen
 - ⌘esc from any depth lands on an empty root search with the window still open — **must be checked
   on a real keyboard**: macOS claims the chord, so `CommandEscapeTap` is the only thing that
   delivers it and it needs Accessibility granted to the running build. With the palette closed, ⌘esc
   still does whatever macOS does with it. Open a menu or dialog over the palette and verify ⌘esc
   passes through while the palette is not key; after dismissing it, the palette chord works again
+- While a confirmation dialog is open, the main palette shortcut and ⌘esc leave both surfaces alone.
 - A bare ⌫ in an empty field walks the same path Escape does
 - General ▸ Escape Key Behavior set to `Close window and pop to root`: Escape on sub-screens closes
   the window, and reopening lands on the root search whatever Pop to Root Search says

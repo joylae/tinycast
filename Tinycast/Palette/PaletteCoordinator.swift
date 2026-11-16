@@ -55,7 +55,7 @@ final class PaletteCoordinator {
     }
 
     func togglePalette() {
-        if isShowing(.launcher) {
+        if isVisible {
             hidePalette()
         } else {
             showPalette(mode: .launcher, restoreAnyMode: true)
@@ -123,6 +123,11 @@ final class PaletteCoordinator {
         menuSearch.reset()
         windowSwitch.reset()
         windowController.hide(restoreFocus: restoreFocus)
+    }
+
+    func closePalette() {
+        hidePalette()
+        popToRootNow()
     }
 
     /// A row dragged out and landed is a finished errand, so the palette leaves as after a paste.

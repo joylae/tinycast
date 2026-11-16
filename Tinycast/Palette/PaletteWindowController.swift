@@ -25,7 +25,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     private var pasteMonitor: Any?
     /// ⌘esc: the window server claims it, so no keystroke is left for the responder chain to see.
     private lazy var commandEscapeTap = CommandEscapeTap { [weak self] in
-        guard let self, self.panel?.isKeyWindow == true else { return }
+        guard let self, !core.isShowingDialog, self.panel?.isKeyWindow == true else { return }
         self.core.palette.prepare(mode: .launcher)
     }
 

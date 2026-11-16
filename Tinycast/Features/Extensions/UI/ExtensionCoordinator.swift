@@ -260,11 +260,14 @@ final class ExtensionCoordinator {
     }
 
     /// Escape past an empty search field: pop the extension's own stack, then leave the command.
-    func exitExtensionScreen() {
+    func exitExtensionScreen(resetOnClose: Bool = false) {
         Task {
             if await extensions.popNavigation() { return }
             await extensions.stop()
-            if !palette.pop() { paletteCoordinator.hidePalette() }
+            if !palette.pop() {
+                paletteCoordinator.hidePalette()
+                if resetOnClose { paletteCoordinator.popToRootNow() }
+            }
         }
     }
 
