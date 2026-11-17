@@ -67,9 +67,9 @@ selectable Markdown renderer with AI Chat.
   model that the text is material to work on and never instructions to follow, and that only the
   transformed text may come back — no preamble, no fences. Custom instructions replace these rules
   too. The output is pasted into somebody's document.
-- **A custom prompt cannot drop that boundary.** An override on a shipped action may replace
-  `boundary`, because the sheet shows the whole prompt. A custom action *is* the prompt, so `boundary`
-  is prepended and no control removes it.
+- **The editor shows the complete system prompt.** A new custom action starts with `boundary` in
+  its editable instructions. Saving stores the full prompt, and execution sends it without a hidden
+  prefix. Both custom actions and overrides on shipped actions may replace or remove that boundary.
 - **Each model action owns its instructions and its route.** The pencil on Fix Grammar, Rewrite and
   Summarize opens a sheet prefilled with the exact built-in prompt and the action's model. Saving
   replaces both for only that action; Use Default restores the prompt. Translate has no editor because no model handles translation. The same
@@ -109,6 +109,16 @@ prompt, because importing them would change results without the reader seeing th
 ## Custom actions
 
 `CustomQuickAction` is `id`, `name`, `iconSymbol`, `instructions`, `previewsResult`, `createdAt`.
+`instructions` is the complete system prompt, persisted as `systemPrompt`. The custom editor opens
+with that exact text; a new action starts with the default text-transformation instructions. The
+selected text stays in its separate user message. Name and instructions must remain non-empty after
+trimming. Cancel discards the draft.
+
+`CustomQuickActionPromptMigration` expands old `instructions` records with the previously implicit
+boundary when the store loads, preserving their actual requests. Loading does not rewrite the file;
+the next successful mutation saves every record using `systemPrompt`, so subsequent launches never
+prepend the boundary again, including when the reader removed it.
+
 `CustomQuickActionStore` keeps them as JSON in Application Support, ordered by `createdAt`, under an
 injected directory so the harness gets a throwaway one. Name and instructions must be non-empty;
 nothing else is rejected, including a name a shipped action already uses.

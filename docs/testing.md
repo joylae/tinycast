@@ -187,6 +187,8 @@ If a change touches anything in the right column, the harness on the left is man
 | `IconCacheTests` | `Platform/Images/IconCache.swift` — row sizing at 1×/2×, warm reuse, stamp and style invalidation, bitmap release, fitted geometry across all 256 alpha values, and that a row icon draws identically to the 96px one |
 | `EntryIconTests` | `EntryIcon` — that each case draws, caches and prints apart from the others, and that a moved `FileIconStamp` retires the bitmap decoded before it |
 | `TextDiffTests` | `QuickActions/Model/TextDiffEngine.swift` — exact chunks, coalescing, Unicode, ties, token-cap boundaries and fast paths |
+| `QuickActionTests` | Quick-action prompts, complete editable custom instructions, routes, validation and store persistence |
+| `CustomQuickActionPromptMigrationTests` | Legacy custom-action prompts retain their actual request; mixed formats, repeated loads, cancellation and saving without the default boundary across relaunch |
 | `localization-test` | Chinese translations for settings descriptions and labels, including interpolated names and counts |
 | `SettingsBackupTests` | `Settings/AppSettingsKey.swift`, `Backup/Model/SettingsBackupCoverage.swift` |
 | `SettingsFileTests` | `Settings/Model/` and `Settings/Service/` — key paths, value tokens, the printer and parser, and the repository's import, replace, save, reload and symlink handling on a scratch folder |

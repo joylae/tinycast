@@ -27,7 +27,8 @@ final class CustomQuickActionStore {
         guard FileManager.default.fileExists(atPath: fileURL.path) else { return }
         // A file that exists but won't read is authored data: report, never write over it.
         guard let data = try? Data(contentsOf: fileURL),
-            let decoded = try? JSONDecoder().decode([CustomQuickAction].self, from: data)
+            let upgraded = try? CustomQuickActionPromptMigration.upgrading(data),
+            let decoded = try? JSONDecoder().decode([CustomQuickAction].self, from: upgraded)
         else {
             isAvailable = false
             return

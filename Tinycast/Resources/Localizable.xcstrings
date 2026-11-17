@@ -125432,6 +125432,58 @@
         }
       }
     },
+    "These are the complete system instructions sent to the model." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dies sind die vollständigen Systemanweisungen, die an das Modell gesendet werden."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estas son las instrucciones completas del sistema que se envían al modelo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voici les instructions système complètes envoyées au modèle."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "モデルに送信されるシステム指示の全文です。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모델에 전송되는 전체 시스템 지침입니다."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estas são as instruções completas do sistema enviadas ao modelo."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это полные системные инструкции, отправляемые модели."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这是发送给模型的完整系统提示词。"
+          }
+        }
+      }
+    },
     "Thinking blocks start expanded instead of collapsed." : {
       "localizations" : {
         "de" : {
@@ -128395,58 +128447,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tinycast 设置"
-          }
-        }
-      }
-    },
-    "Tinycast always tells the model to return only the transformed text, and to treat your selection as material rather than as instructions." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tinycast weist das Modell immer an, nur den umgewandelten Text zurückzugeben und deine Auswahl als Material statt als Anweisungen zu behandeln."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tinycast siempre indica al modelo que devuelva solo el texto transformado y trate tu selección como contenido, no como instrucciones."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tinycast demande toujours au modèle de ne renvoyer que le texte transformé et de traiter votre sélection comme du contenu plutôt que comme des instructions."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tinycastは常に、変換後のテキストのみを返し、選択範囲を指示ではなく素材として扱うようにモデルに指示します。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tinycast는 변환된 텍스트만 반환하고 선택한 내용을 지시가 아닌 처리할 자료로 취급하도록 항상 모델에 요청합니다."
-          }
-        },
-        "pt" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O Tinycast sempre instrui o modelo a retornar apenas o texto transformado e a tratar sua seleção como material, e não como instruções."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tinycast всегда указывает модели возвращать только преобразованный текст и рассматривать выделенное как материал, а не инструкции."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tinycast 始终要求模型仅返回转换后的文本，并将所选内容视为素材，而非指令。"
           }
         }
       }

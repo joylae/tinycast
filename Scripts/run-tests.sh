@@ -911,7 +911,16 @@ run MCPTests               Tinycast/Features/Settings/AppSettingsKey.swift \
                            Tinycast/Features/MCP/Settings/MCPSettingsStore.swift
 run -O TextDiffTests       Tinycast/Features/QuickActions/Model/TextDiffEngine.swift
 run index TextDiffPerformanceTests Tinycast/Features/QuickActions/Model/TextDiffEngine.swift
+run CustomQuickActionPromptMigrationTests \
+                           Tinycast/Migrations/CustomQuickActionPromptMigration.swift \
+                           Tinycast/Features/QuickActions/Model/BuiltInQuickAction.swift \
+                           Tinycast/Features/QuickActions/Model/CustomQuickAction.swift \
+                           Tinycast/Features/QuickActions/Model/CustomQuickActionStore.swift \
+                           Tinycast/Features/QuickActions/Model/QuickAction.swift \
+                           Tinycast/Features/QuickActions/Model/QuickActionPrompt.swift \
+                           Tinycast/Platform/LocalizedResource.swift
 run QuickActionTests       Tinycast/Features/Settings/AppSettingsKey.swift \
+                           Tinycast/Migrations/CustomQuickActionPromptMigration.swift \
                            Tinycast/Features/AI/Model/AIConnection.swift \
                            Tinycast/Features/AI/Model/AppleIntelligence.swift \
                            Tinycast/Features/AI/Model/ChatGPTSubscription.swift \

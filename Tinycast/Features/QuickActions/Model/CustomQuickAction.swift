@@ -11,6 +11,11 @@ struct CustomQuickAction: Codable, Hashable, Identifiable, Sendable {
     var previewsResult: Bool
     var createdAt: Date
 
+    private enum CodingKeys: String, CodingKey {
+        case id, name, iconSymbol, previewsResult, createdAt
+        case instructions = "systemPrompt"
+    }
+
     init(
         id: UUID = UUID(), name: String, iconSymbol: String? = nil, instructions: String,
         previewsResult: Bool = true, createdAt: Date = Date()

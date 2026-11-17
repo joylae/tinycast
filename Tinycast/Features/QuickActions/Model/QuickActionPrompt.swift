@@ -5,7 +5,7 @@ enum QuickActionPrompt {
     static func instructions(for action: QuickAction, override: String? = nil) -> String {
         switch action {
         case .builtIn(let builtIn): return instructions(for: builtIn, override: override)
-        case .custom(let custom): return boundary + "\n\n" + custom.instructions
+        case .custom(let custom): return custom.instructions
         }
     }
 

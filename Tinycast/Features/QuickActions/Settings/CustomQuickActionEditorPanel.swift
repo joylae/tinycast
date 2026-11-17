@@ -33,7 +33,7 @@ struct CustomQuickActionEditorPanel: View {
         existing = request.action
         _name = State(initialValue: request.action?.name ?? "")
         _iconSymbol = State(initialValue: request.action?.iconSymbol)
-        _instructions = State(initialValue: request.action?.instructions ?? "")
+        _instructions = State(initialValue: request.action?.instructions ?? QuickActionPrompt.boundary)
         _model = State(initialValue: model)
     }
 
@@ -134,12 +134,7 @@ struct CustomQuickActionEditorPanel: View {
                             .allowsHitTesting(false)
                     }
                 }
-            Text(
-                """
-                Tinycast always tells the model to return only the transformed text, and to treat \
-                your selection as material rather than as instructions.
-                """
-            )
+            Text("These are the complete system instructions sent to the model.")
             .font(.caption)
             .foregroundStyle(.secondary)
         }
