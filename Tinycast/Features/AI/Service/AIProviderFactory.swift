@@ -86,13 +86,17 @@ enum AIProviderFactory {
                 throw AIProviderError.unavailable(String(localized: "Add an API key in Settings."))
             }
             let effort = connection.offeredEffort(savedEffort, for: model)
-            return HTTPAIProvider(
+            let provider = HTTPAIProvider(
                 configuration: AIHTTPConfiguration(
                     provider: connection.provider, baseURL: baseURL, model: model, effort: effort,
                     disablesThinking: effort == AIConnection.ReasoningOptions.noEffort
                         && connection.takesThinkingField,
                     maxOutputTokens: connection.outputLimits?[model], headers: headers),
                 apiKey: key)
+            guard let toolSession, !toolSession.tools.isEmpty else { return provider }
+            return AIToolLoopProvider(
+                base: provider, tools: toolSession.tools, maxRounds: toolSession.maxCalls,
+                invoke: toolSession.invoke)
         }
     }
 }

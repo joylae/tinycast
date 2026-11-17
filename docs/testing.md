@@ -188,6 +188,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `EntryIconTests` | `EntryIcon` — that each case draws, caches and prints apart from the others, and that a moved `FileIconStamp` retires the bitmap decoded before it |
 | `TextDiffTests` | `QuickActions/Model/TextDiffEngine.swift` — exact chunks, coalescing, Unicode, ties, token-cap boundaries and fast paths |
 | `QuickActionTests` | Quick-action prompts, complete editable custom instructions, routes, validation and store persistence |
+| `QuickActionMCPTests` | Quick-action requests carry MCP definitions, feed back tool results, and preserve the complete system prompt and separate selected text |
 | `CustomQuickActionPromptMigrationTests` | Legacy custom-action prompts retain their actual request; mixed formats, repeated loads, cancellation and saving without the default boundary across relaunch |
 | `localization-test` | Chinese translations for settings descriptions and labels, including interpolated names and counts |
 | `SettingsBackupTests` | `Settings/AppSettingsKey.swift`, `Backup/Model/SettingsBackupCoverage.swift` |

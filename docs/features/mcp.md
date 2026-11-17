@@ -7,14 +7,15 @@ and the model calls what it wants. On an API route Tinycast is the MCP client; o
 Claude routes the vendor CLI is, and Tinycast supplies the servers and answers for them. OpenCode
 runs its own model loop but calls selected tools through Tinycast's per-turn local MCP bridge.
 `Features/MCP/` owns servers and knows nothing about chat; [AI](ai.md) owns tool calling but does
-not read MCP settings. `AIChatCoordinator.send` is the one place the two meet.
+not read MCP settings. AI Chat and model-backed Quick Actions borrow sessions from `MCPCoordinator`;
+`AIProviderFactory` attaches the API tool loop or the route's native tool session.
 
 ## Invariants
 
 - **MCP is off out of the box, and off means fully off.** `AppSettings.mcpEnabled` is the flag and
   `MCPCoordinator.applyEnabled()` is the only place that projects it: no connection opened, no local
-  process resident, no tool named to any model. `aiEnabled` off does the same, because chat is the
-  only consumer. That reaches the Codex helper too, which keeps what it was launched with until it
+  process resident, no tool named to any model. Turning off both AI Chat and Quick Actions does the
+  same. That reaches the Codex helper too, which keeps what it was launched with until it
   exits: when MCP goes off, or a server it runs is removed, set to Never Allow or signed out of,
   `ChatGPTSubscriptionManager.dropWithdrawnServers` stops it between turns rather than leave the
   server process and any lent token in it for its ten idle minutes; a change made mid-turn leaves it
@@ -39,7 +40,8 @@ not read MCP settings. `AIChatCoordinator.send` is the one place the two meet.
   host. Refresh tokens go only to the token endpoint retained with their client registration.
 - **OAuth sign-in is explicit.** Settings opens the browser after discovery and PKCE S256 checks.
   The callback binds only `127.0.0.1:4962`, validates state and any issuer parameter, accepts one
-  response and closes. Cancellation, disabling AI/MCP and the five-minute timeout also close it.
+  response and closes. Cancellation, disabling MCP or both consumers, and the five-minute timeout
+  also close it.
   An occupied port fails instead of choosing another port. No custom URL scheme is involved.
 - **A tool call never enters the conversation.** The whole call-and-result round trip lives inside
   one turn, in `AIToolLoopProvider`, and what `ChatSession` keeps is a `ChatToolUse` render record —
@@ -140,6 +142,16 @@ not read MCP settings. `AIChatCoordinator.send` is the one place the two meet.
   dynamic and supplied client registration, refresh coalescing, redirects and bounded 401 recovery.
 
 ## Transports
+
+Quick Actions shares chat's server catalog, trust policy and tool-round limit. Each action run uses
+its own permission scope, discarded on completion or cancellation; it does not borrow a chat's grants
+or temporary tool filters. API and OpenCode actions await the manager's tracked connection tasks
+before creating a tool session, including when discovery is already in flight. Local servers stay
+hosted while either a chat or an enabled action route needs Tinycast's MCP client. Stopping the
+manager cancels discovery tasks and removes their connections, so late handshakes cannot restore tools.
+Cancelling one action releases only its discovery waiter, leaving shared connections available to
+other consumers. A cancelled tool-permission request dismisses its own dialog and cannot dismiss a
+newer dialog that took its place.
 
 Both speak JSON-RPC 2.0 through one encoder, `MCPProtocol`; only the framing differs.
 

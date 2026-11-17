@@ -17,9 +17,64 @@ struct MCPStdioTests {
         await aServerThatDiesMidCallFailsThatCall()
         await anUnsolicitedServerRequestIsDeclined()
         await stoppingLeavesNothingRunning()
+        await preparingWaitsForTheToolList()
+        await stoppingDuringPreparationWithdrawsTools()
+        await cancellingPreparationKeepsTheSharedConnection()
 
         print("\(passes) passed, \(failures) failed")
         if failures > 0 { exit(1) }
+    }
+
+    static func preparingWaitsForTheToolList() async {
+        guard let stub = StubMCPServer() else { return }
+        defer { stub.tearDown() }
+        let manager = MCPServerManager(
+            secrets: MCPSecretStore(keychain: KeychainSecretStore(scope: "mcp-test-\(UUID())")))
+        defer { manager.stop() }
+        manager.reconcile([stub.server])
+        try? await manager.prepare([stub.server])
+        expect(manager.tools.count == 2, "a cold request waits for the in-flight tool discovery")
+        manager.stop()
+        expect(manager.connections.isEmpty, "stopping releases the prepared connections")
+        expect(manager.tools.isEmpty, "a stopped manager offers no tools")
+    }
+
+    static func stoppingDuringPreparationWithdrawsTools() async {
+        guard let stub = StubMCPServer() else { return }
+        defer { stub.tearDown() }
+        let manager = MCPServerManager(
+            secrets: MCPSecretStore(keychain: KeychainSecretStore(scope: "mcp-test-\(UUID())")))
+        let preparing = Task { try? await manager.prepare([stub.server]) }
+        let started = await stub.awaitCondition { !manager.connections.isEmpty }
+        expect(started, "preparation starts a connection before it is stopped")
+        manager.stop()
+        await preparing.value
+        expect(manager.connections.isEmpty && manager.tools.isEmpty, "a late handshake cannot restore stopped tools")
+    }
+
+    static func cancellingPreparationKeepsTheSharedConnection() async {
+        guard let stub = StubMCPServer(mode: "hang-on-initialize") else { return }
+        defer { stub.tearDown() }
+        let manager = MCPServerManager(
+            secrets: MCPSecretStore(keychain: KeychainSecretStore(scope: "mcp-test-\(UUID())")))
+        defer { manager.stop() }
+        var cancelled = false
+        let preparing = Task {
+            do {
+                try await manager.prepare([stub.server])
+            } catch is CancellationError {
+                cancelled = true
+            } catch {
+                expect(false, "cancellation is not a connection failure")
+            }
+        }
+        _ = await stub.awaitCondition { !manager.connections.isEmpty }
+        preparing.cancel()
+        let returned = await stub.awaitCondition(timeout: .seconds(1)) { cancelled }
+        expect(returned, "a cancelled caller stops waiting before the shared handshake times out")
+        expect(!manager.connections.isEmpty, "another consumer can still use the shared connection")
+        manager.stop()
+        await preparing.value
     }
 
     static func aServerConnectsListsAndAnswers() async {

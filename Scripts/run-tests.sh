@@ -919,6 +919,18 @@ run CustomQuickActionPromptMigrationTests \
                            Tinycast/Features/QuickActions/Model/QuickAction.swift \
                            Tinycast/Features/QuickActions/Model/QuickActionPrompt.swift \
                            Tinycast/Platform/LocalizedResource.swift
+run QuickActionMCPTests    Tinycast/Features/QuickActions/Model/BuiltInQuickAction.swift \
+                           Tinycast/Features/QuickActions/Model/CustomQuickAction.swift \
+                           Tinycast/Features/QuickActions/Model/QuickAction.swift \
+                           Tinycast/Features/QuickActions/Model/QuickActionPrompt.swift \
+                           Tinycast/Features/QuickActions/Model/QuickActionFailure.swift \
+                           Tinycast/Features/QuickActions/Service/QuickActionRunner.swift \
+                           Tinycast/Features/AI/Model/AIRequest.swift \
+                           Tinycast/Features/AI/Model/AITool.swift \
+                           Tinycast/Features/AI/Model/JSONValue.swift \
+                           Tinycast/Features/AI/Service/AIProvider.swift \
+                           Tinycast/Features/AI/Service/AIToolLoopProvider.swift \
+                           Tinycast/Platform/LocalizedResource.swift
 run QuickActionTests       Tinycast/Features/Settings/AppSettingsKey.swift \
                            Tinycast/Migrations/CustomQuickActionPromptMigration.swift \
                            Tinycast/Features/AI/Model/AIConnection.swift \

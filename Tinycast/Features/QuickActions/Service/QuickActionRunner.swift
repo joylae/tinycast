@@ -35,11 +35,10 @@ final class QuickActionRunner {
         return text
     }
 
-    /// No transcript to grow, so a caller showing progress reads `onDelta` and the rest just await.
     static func run(
         _ action: QuickAction, selection: String, using provider: any AIProvider,
         instructionOverride: String?,
-        onDelta: @MainActor (String) -> Void = { _ in }
+        onOutput: @MainActor (String) -> Void = { _ in }
     ) async throws -> String {
         let request = AIRequest(
             instructions: QuickActionPrompt.instructions(
@@ -52,9 +51,12 @@ final class QuickActionRunner {
             maxOutputTokens: maxOutputTokens(for: action, selection: selection, on: provider))
         var text = ""
         for try await event in provider.stream(request) {
-            guard case .text(let delta) = event else { continue }
-            text += delta
-            onDelta(delta)
+            switch event {
+            case .text(let delta): text += delta
+            case .toolCall: text = ""
+            default: continue
+            }
+            onOutput(text)
         }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {

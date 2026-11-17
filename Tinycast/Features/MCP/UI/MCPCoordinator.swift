@@ -22,7 +22,9 @@ final class MCPCoordinator {
         self.core = core
     }
 
-    var isActive: Bool { settings.aiEnabled && settings.mcpEnabled }
+    var isActive: Bool {
+        (settings.aiEnabled || settings.quickActionsEnabled) && settings.mcpEnabled
+    }
 
     /// Off means off: no connection, no resident process, and nothing offered to a model.
     func applyEnabled() {
@@ -48,10 +50,30 @@ final class MCPCoordinator {
         manager.reconcile(ownServers)
     }
 
+    func prepareTools() async throws {
+        guard isActive else { return }
+        try await manager.prepare(ownServers)
+    }
+
+    var needsLocalServers: Bool {
+        if settings.aiEnabled, !core.aiChatCoordinator.everyChatRunsItsOwnTools { return true }
+        guard settings.quickActionsEnabled else { return false }
+        let selections = [core.quickActionSettings.model ?? core.aiSettings.defaultModel].compactMap { $0 }
+            + Array(core.quickActionSettings.modelOverrides.values)
+        return selections.contains {
+            switch $0 {
+            case .api, .openCode: true
+            default: false
+            }
+        }
+    }
+
     /// What Tinycast runs itself; Codex and Claude start their own copy of every local server.
     private var ownServers: [MCPServer] {
-        let cliRoute = core.aiChatCoordinator.everyChatRunsItsOwnTools
-        return store.enabledServers.filter { $0.runsInTinycast(whileCLIRouteSelected: cliRoute) }
+        let cliRoute = !needsLocalServers
+        return store.enabledServers.filter {
+            $0.trust != .never && $0.runsInTinycast(whileCLIRouteSelected: cliRoute)
+        }
     }
 
     var slugs: Set<String> {
@@ -79,6 +101,34 @@ final class MCPCoordinator {
                 return store.server(id: tool.serverID)?.trust != .never
             }
             .map(\.aiTool)
+    }
+
+    func toolSession(
+        in id: UUID, scope: ChatToolScope = ChatToolScope(), scopedTo slug: String? = nil
+    ) -> AIToolSession? {
+        let tools = tools(scopedTo: slug).filter { tool in
+            guard let route = MCPToolName.parse(tool.name) else { return true }
+            return scope.allows(route.slug)
+        }
+        guard scope.isEnabled, !tools.isEmpty else { return nil }
+        return AIToolSession(tools: tools, maxCalls: core.aiSettings.toolRounds.limit) { [self] call in
+            await invoke(call, in: id)
+        }
+    }
+
+    func toolServerSession(
+        in id: UUID, scope: ChatToolScope = ChatToolScope(), scopedTo slug: String? = nil
+    ) -> AIToolServerSession? {
+        guard isActive, scope.isEnabled else { return nil }
+        return AIToolServerSession(rounds: core.aiSettings.toolRounds.limit) { [self] in
+            await toolServers(scopedTo: slug).filter { scope.allows($0.handle) }
+        } consent: { [self] call in
+            await permit(call, in: id)
+        }
+    }
+
+    func endSession(_ id: UUID) {
+        chatGrants[id] = nil
     }
 
     /// The same list for a CLI route; it starts its own copies, so Tinycast's need not be ready.
@@ -114,7 +164,11 @@ final class MCPCoordinator {
         else {
             return .failure(call.id, "That tool is no longer connected.")
         }
-        guard await isPermitted(server, tool: route.tool, in: chat) else {
+        guard await isPermitted(server, tool: route.tool, in: chat), !Task.isCancelled,
+            isActive, let current = self.server(slug: route.slug), current.id == server.id,
+            current.transport == server.transport, current.oauth == server.oauth, current.trust != .never,
+            manager.connection(slug: route.slug) === connection
+        else {
             return .failure(call.id, "The user declined this tool call.")
         }
         manager.markUsed()
@@ -183,6 +237,7 @@ final class MCPCoordinator {
     }
 
     private func isPermitted(_ server: MCPServer, tool: String, in chat: UUID) async -> Bool {
+        guard !Task.isCancelled, isActive else { return false }
         switch MCPTrustPolicy.decide(
             trust: server.trust, isGrantedForChat: chatGrants[chat]?.contains(server.id) == true)
         {
@@ -190,7 +245,9 @@ final class MCPCoordinator {
         case .refuse: return false
         case .ask: break
         }
-        switch await ask(server, tool: tool) {
+        let choice = await ask(server, tool: tool)
+        guard !Task.isCancelled, isActive, self.server(slug: server.slug) == server else { return false }
+        switch choice {
         case .always:
             store.setTrust(.always, for: server.id)
             return true

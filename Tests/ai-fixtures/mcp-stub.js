@@ -48,6 +48,7 @@ for (const line of lines()) {
     const { method, id } = message;
 
     if (method === "initialize") {
+        if (MODE === "hang-on-initialize") continue;
         if (MODE === "die-on-initialize") {
             fs.writeSync(2, "the server refused to start\n");
             process.exit(3);

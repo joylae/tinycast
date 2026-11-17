@@ -12,6 +12,16 @@ shortcut and a launcher row like any other.
 Quick Actions is the provider layer's second consumer. It shares the provider connections and
 selectable Markdown renderer with AI Chat.
 
+Model-backed Quick Actions also use the enabled MCP servers from Settings, with the same trust
+policy and tool-round limit as Quick AI. API routes use Tinycast's tool loop, Codex and Claude use
+their native MCP clients, and tool-capable OpenCode models use the existing bridge. On-device,
+Grok and Cursor routes do not offer MCP tools; Apple Translation remains independent of models.
+Quick Actions use all enabled, permitted servers rather than inheriting a live chat's temporary
+tools menu or `@server` filter. An Ask Each Chat grant lasts for one action run and is released
+when it finishes or is cancelled.
+Only the final model round becomes the replacement: text emitted before a tool call is cleared
+from the result and preview, so a tool-use preamble cannot be pasted into the source document.
+
 ## Invariants
 
 - **Off out of the box, and off means the shortcuts do nothing.** `AppSettings.quickActionsEnabled`
@@ -55,6 +65,9 @@ selectable Markdown renderer with AI Chat.
 - **Installed providers are ordinary routes.** The model picker reads the same live Codex, Claude, Grok,
   OpenCode and Cursor catalogs as AI Settings. Execution still goes through `AIProviderFactory`, so Quick Actions
   inherit the same installed login, tool restrictions and process cleanup without owning CLI logic.
+- **A cold model request waits for its tools.** Quick Actions waits for the MCP manager's existing
+  connection tasks before taking the tool list. Chat and action routes jointly decide whether
+  Tinycast must host a local server, so a Codex chat cannot leave an API action without tools.
 - **The model picker is the AI picker.** Both panes render `AIModelOption.groupedCatalog`, with the
   same provider sections, model labels and provider-supported reasoning levels. An installed-model
   selection stores its effort in `quickActionModel`, independently of chat's effort. The sheets use the

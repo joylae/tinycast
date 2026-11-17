@@ -40,8 +40,7 @@ final class AppCore {
     /// The file's launcher items, kept to apply a waiting record once its app is installed.
     @ObservationIgnored private var launcherSettingsFile: LauncherSettingsFile?
     @ObservationIgnored private var appearanceObservation: NSKeyValueObservation?
-    /// The last verdict `trackChatRoute` acted on; nil until it has read one.
-    @ObservationIgnored private var chatsRunTheirOwnTools: Bool?
+    @ObservationIgnored private var needsLocalMCPServers: Bool?
     @ObservationIgnored private let iconStyle = IconStyleMonitor()
     let favorites = FavoritesStore()
     let visibility = VisibilityStore()
@@ -671,7 +670,7 @@ final class AppCore {
     }
 
     /// Permissive guardrails: the text transformed is the reader's own, which `.default` refuses.
-    func quickActionProvider(for action: QuickAction) throws -> any AIProvider {
+    func quickActionProvider(for action: QuickAction, in session: UUID) async throws -> any AIProvider {
         quickActionSettings.repairModel(
             against: aiSettings.connections, fallback: aiSettings.defaultModel)
         guard let selection = quickActionSettings.model(for: action) ?? aiSettings.defaultModel
@@ -679,10 +678,28 @@ final class AppCore {
             throw AIProviderError.unavailable(
                 String(localized: "Choose a model in Settings \u{2192} Quick Actions."))
         }
+        let supportsTools: Bool
+        switch selection {
+        case .api, .codex, .claude:
+            supportsTools = true
+        case .openCode(let model, _):
+            supportsTools = installedAI.status(for: .openCode).models
+                .first { $0.id == model }?.supportsTools == true
+        case .appleIntelligence, .grok, .cursor:
+            supportsTools = false
+        }
+        if supportsTools, !selection.runsItsOwnTools {
+            try await mcpCoordinator.prepareTools()
+        }
+        try Task.checkCancellation()
         return try AIProviderFactory.make(
             selection: selection, settings: aiSettings, subscription: chatGPTSubscription,
             installedAI: installedAI,
-            guardrails: .permissiveContentTransformations)
+            guardrails: .permissiveContentTransformations,
+            toolServers: supportsTools && selection.runsItsOwnTools
+                ? mcpCoordinator.toolServerSession(in: session) : nil,
+            toolSession: supportsTools && !selection.runsItsOwnTools
+                ? mcpCoordinator.toolSession(in: session) : nil)
     }
 
     // MARK: - Feature switches
@@ -760,6 +777,7 @@ final class AppCore {
             {
                 _ = $0.aiEnabled
                 _ = $0.mcpEnabled
+                _ = $0.quickActionsEnabled
             }, reproject: { $0.mcpCoordinator.applyEnabled() })
         track(
             { _ = $0.quickActionsEnabled },
@@ -808,7 +826,7 @@ final class AppCore {
             reproject: { $0.extensionCoordinator.applyExtensionsLauncherPresence() })
         track({ _ = $0.snippetsFolder }, reproject: { $0.applySnippetsFolder() })
         track({ _ = $0.notesFolder }, reproject: { $0.applyNotesFolder() })
-        trackChatRoute()
+        trackMCPRoutes()
     }
 
     /// `.system` resolves to `nil`, so AppKit follows macOS with nothing polling.
@@ -873,16 +891,15 @@ final class AppCore {
         }
     }
 
-    /// A chat route that runs its own MCP client decides which servers Tinycast runs itself.
-    private func trackChatRoute() {
-        let runsOwnTools = withObservationTracking {
-            aiChatCoordinator.everyChatRunsItsOwnTools
+    private func trackMCPRoutes() {
+        let needsLocal = withObservationTracking {
+            mcpCoordinator.needsLocalServers
         } onChange: { [weak self] in
-            Task { @MainActor in self?.trackChatRoute() }
+            Task { @MainActor in self?.trackMCPRoutes() }
         }
         // Re-read on every streaming flush, so only a changed verdict reaches the servers.
-        defer { chatsRunTheirOwnTools = runsOwnTools }
-        guard let previous = chatsRunTheirOwnTools, previous != runsOwnTools else { return }
+        defer { needsLocalMCPServers = needsLocal }
+        guard let previous = needsLocalMCPServers, previous != needsLocal else { return }
         mcpCoordinator.applyEnabled()
     }
 

@@ -307,13 +307,15 @@ final class QuickActionCoordinator {
         if state.action.usesTranslationFramework {
             return try await TextTranslator.translate(state.original, to: state.targetLanguage)
         }
-        let provider = try core.quickActionProvider(for: state.action)
+        let session = UUID()
+        defer { core.mcpCoordinator.endSession(session) }
+        let provider = try await core.quickActionProvider(for: state.action, in: session)
         return try await QuickActionRunner.run(
             state.action, selection: state.original, using: provider,
             instructionOverride: store.settings.instructionOverride(for: state.action),
-            onDelta: { delta in
+            onOutput: { text in
                 guard streaming else { return }
-                state.append(delta)
+                state.updateOutput(text)
             })
     }
 

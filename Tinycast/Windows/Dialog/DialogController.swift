@@ -8,6 +8,7 @@ final class DialogController: NSObject, NSWindowDelegate {
     private let onPresentationChanged: (Bool) -> Void
     private var panel: DialogPanel?
     private var continuation: CheckedContinuation<Int, Never>?
+    private var presentationID: UUID?
 
     init(settings: AppSettings, onPresentationChanged: @escaping (Bool) -> Void) {
         self.settings = settings
@@ -108,50 +109,65 @@ final class DialogController: NSObject, NSWindowDelegate {
     }
 
     private func present(_ request: DialogRequest) async -> Int {
-        guard continuation == nil else { return request.cancelIndex }
-        return await withCheckedContinuation { continuation in
-            self.continuation = continuation
-            onPresentationChanged(true)
-            let width =
-                switch request.accessory {
-                case nil, .volume: metrics.size.dialogCompactWidth
-                case .snippetArguments, .clipboardText: metrics.size.dialogWidth
+        guard !Task.isCancelled, continuation == nil else { return request.cancelIndex }
+        let id = UUID()
+        let cancelIndex = request.cancelIndex
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                guard !Task.isCancelled else {
+                    continuation.resume(returning: request.cancelIndex)
+                    return
                 }
-            let content = hostingView(
-                DialogView(
-                    request: request, width: width,
-                    onChoose: { [weak self] index in
-                        self?.finish(index)
-                    }),
-                width: width, minHeight: 0)
-            let panel = DialogPanel(content: content, cornerRadius: metrics.radius.panel)
-            panel.handlesArrowKeys = request.accessory?.claimsArrowKeys ?? false
-            panel.acceptsLineBreaks = request.accessory?.acceptsLineBreaks ?? false
-            panel.delegate = self
-            panel.onKey = { [weak self] key in
-                guard let self else { return }
-                switch key {
-                case .cancel:
-                    finish(request.cancelIndex)
-                case .confirm:
-                    finish(request.defaultIndex)
-                case .increment, .decrement:
-                    // Keying the slider lands on the same values Volume Up/Down produce.
-                    guard case .volume(let volume) = request.accessory else { return }
-                    volume.level = VolumeLevel.stepped(volume.level, up: key == .increment)
+                presentationID = id
+                self.continuation = continuation
+                onPresentationChanged(true)
+                let width =
+                    switch request.accessory {
+                    case nil, .volume: metrics.size.dialogCompactWidth
+                    case .snippetArguments, .clipboardText: metrics.size.dialogWidth
+                    }
+                let content = hostingView(
+                    DialogView(
+                        request: request, width: width,
+                        onChoose: { [weak self] index in
+                            self?.finish(index)
+                        }),
+                    width: width, minHeight: 0)
+                let panel = DialogPanel(content: content, cornerRadius: metrics.radius.panel)
+                panel.handlesArrowKeys = request.accessory?.claimsArrowKeys ?? false
+                panel.acceptsLineBreaks = request.accessory?.acceptsLineBreaks ?? false
+                panel.delegate = self
+                panel.onKey = { [weak self] key in
+                    guard let self else { return }
+                    switch key {
+                    case .cancel:
+                        finish(request.cancelIndex)
+                    case .confirm:
+                        finish(request.defaultIndex)
+                    case .increment, .decrement:
+                        // Keying the slider lands on the same values Volume Up/Down produce.
+                        guard case .volume(let volume) = request.accessory else { return }
+                        volume.level = VolumeLevel.stepped(volume.level, up: key == .increment)
+                    }
                 }
+                self.panel = panel
+                place(panel)
+                // Non-activating like the palette: key focus without pulling the user out.
+                panel.makeKeyAndOrderFront(nil)
+                panel.orderFrontRegardless()
             }
-            self.panel = panel
-            place(panel)
-            // Non-activating like the palette: key focus without pulling the user out.
-            panel.makeKeyAndOrderFront(nil)
-            panel.orderFrontRegardless()
+        } onCancel: { [weak self] in
+            Task { @MainActor in
+                guard self?.presentationID == id else { return }
+                self?.finish(cancelIndex)
+            }
         }
     }
 
     private func finish(_ index: Int) {
         guard let continuation else { return }
         self.continuation = nil
+        presentationID = nil
         onPresentationChanged(false)
         let closing = panel
         panel = nil

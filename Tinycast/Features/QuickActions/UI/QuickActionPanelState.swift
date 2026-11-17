@@ -39,8 +39,8 @@ final class QuickActionPanelState {
         self.targetLanguage = targetLanguage
     }
 
-    func append(_ delta: String) {
-        output += delta
+    func updateOutput(_ text: String) {
+        output = text
     }
 
     func restart() {

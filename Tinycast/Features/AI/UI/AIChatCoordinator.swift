@@ -377,43 +377,16 @@ final class AIChatCoordinator {
         if model(for: chat)?.runsItsOwnTools == true {
             return try provider(for: chat, toolServers: toolServers(for: chat, scopedTo: slug))
         }
-        let tools = capabilities(for: chat).tools ? tools(for: chat, scopedTo: slug) : []
-        guard !tools.isEmpty else { return try provider(for: chat) }
-        let chatID = chat.session.id
-        let session = AIToolSession(
-            tools: tools, maxCalls: core.aiSettings.toolRounds.limit
-        ) { [mcp = core.mcpCoordinator] call in
-            await mcp.invoke(call, in: chatID)
-        }
-        if case .openCode? = model(for: chat) {
-            return try provider(for: chat, toolSession: session)
-        }
-        return AIToolLoopProvider(
-            base: try provider(for: chat), tools: session.tools, maxRounds: session.maxCalls,
-            invoke: session.invoke)
+        let session = capabilities(for: chat).tools
+            ? core.mcpCoordinator.toolSession(
+                in: chat.session.id, scope: chat.toolScope, scopedTo: slug) : nil
+        return try provider(for: chat, toolSession: session)
     }
 
-    /// The same narrowing as `tools(for:scopedTo:)`, for a client that starts its own servers.
     private func toolServers(for chat: AIChatState, scopedTo slug: String?) -> AIToolServerSession? {
-        guard capabilities(for: chat).tools, chat.toolScope.isEnabled else { return nil }
-        let excluded = chat.toolScope.excluded
-        let chatID = chat.session.id
-        let mcp = core.mcpCoordinator
-        return AIToolServerSession(rounds: core.aiSettings.toolRounds.limit) {
-            await mcp.toolServers(scopedTo: slug).filter { !excluded.contains($0.handle) }
-        } consent: { call in
-            await mcp.permit(call, in: chatID)
-        }
-    }
-
-    /// `@server` narrows a turn further, but never past what the chat's tools menu switched off.
-    private func tools(for chat: AIChatState, scopedTo slug: String?) -> [AITool] {
-        guard chat.toolScope.isEnabled else { return [] }
-        let excluded = chat.toolScope.excluded
-        return core.mcpCoordinator.tools(scopedTo: slug).filter { tool in
-            guard let route = MCPToolName.parse(tool.name) else { return true }
-            return !excluded.contains(route.slug)
-        }
+        guard capabilities(for: chat).tools else { return nil }
+        return core.mcpCoordinator.toolServerSession(
+            in: chat.session.id, scope: chat.toolScope, scopedTo: slug)
     }
 
     var mcpServers: [MCPServer] { core.mcpCoordinator.servers }
