@@ -402,11 +402,11 @@ from `agent --list-models` after `agent status --format json` confirms a login.
 
 Turning thinking off is a reasoning effort, not a second control: `reasoningOptions(for:)` answers with
 the connection's catalogued or declared efforts, or — for a gateway with nothing declared — `Default`
-and `None`. `takesThinkingField` decides who gets that pair: an OpenAI-shaped preset whose base URL is
+and `None`. `offersNoEffort` decides who gets that pair: an OpenAI-shaped preset whose base URL is
 not that preset's own, because a preset pointed away from its own API is a gateway, and a gateway is
 the only destination Tinycast can offer the switch to honestly. Picking a gateway's `None` sends
-`"thinking": {"type": "disabled"}`, which is how DeepSeek and the endpoints that copied its contract
-answer without reasoning first. Every connection but OpenRouter (`takesDeclaredLevels`) takes levels
+`"reasoning_effort": "none"`; it never sends a separate `thinking` field. Every connection but
+OpenRouter (`takesDeclaredLevels`) takes levels
 the reader declares per model in the connection editor, kept after `Default`; OpenRouter is left out
 at any URL because its catalog already names each model's levels. `declarableLevels` is the ladder
 each destination defines, so no vendor is sent a field it does not: a gateway takes `minimal` through

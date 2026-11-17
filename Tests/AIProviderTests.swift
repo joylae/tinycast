@@ -553,17 +553,17 @@ struct AIProviderTests {
         let on = AIRequestBody.make(
             turn,
             configuration: AIHTTPConfiguration(provider: .openAI, baseURL: url, model: "m"))
-        expect(on["thinking"] == nil, "reasoning left alone sends no key at all")
+        expect(
+            on["thinking"] == nil && on["reasoning_effort"] == nil,
+            "reasoning left alone sends no key at all")
 
         let off = AIRequestBody.make(
             turn,
             configuration: AIHTTPConfiguration(
-                provider: .openAI, baseURL: url, model: "m", effort: "none",
-                disablesThinking: true))
+                provider: .openAI, baseURL: url, model: "m", effort: "none"))
         expect(
-            (off["thinking"] as? [String: String])?["type"] == "disabled",
-            "None asks the endpoint to answer directly")
-        expect(off["reasoning_effort"] == nil, "None sends no effort field beside it")
+            off["reasoning_effort"] as? String == "none" && off["thinking"] == nil,
+            "None is a reasoning effort, never a separate thinking field")
 
         var declared = AIConnection(
             provider: .openAI, baseURL: "https://gateway.example/v1", models: ["m"])
@@ -683,7 +683,7 @@ struct AIProviderTests {
         let geminiNone = body(.gemini, effort: "none")
         expect(
             geminiNone["reasoning_effort"] as? String == "none" && geminiNone["thinking"] == nil,
-            "a vendor's None is its own reasoning_effort, never the gateway switch")
+            "a vendor's None is its own reasoning_effort, never a thinking field")
         expect(
             body(.openAI, effort: "default")["reasoning"] == nil
                 && body(.anthropic, effort: "default")["output_config"] == nil

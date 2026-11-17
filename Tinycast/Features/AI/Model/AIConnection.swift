@@ -57,8 +57,7 @@ struct AIConnection: Codable, Equatable, Identifiable, Sendable {
         let efforts: [String]
         let defaultEffort: String?
 
-        /// Named for OpenRouter's own spelling, where `none` likewise disables reasoning entirely.
-        static let thinkingSwitch = ReasoningOptions(
+        static let defaultOptions = ReasoningOptions(
             efforts: [providerDefault, noEffort], defaultEffort: providerDefault)
 
         func resolvedEffort(_ preferred: String?) -> String? {
@@ -94,18 +93,17 @@ struct AIConnection: Codable, Equatable, Identifiable, Sendable {
         self.outputLimits = outputLimits
     }
 
-    /// A preset pointed away from its own API is a gateway, and only a gateway takes a thinking field.
-    var takesThinkingField: Bool {
+    /// A preset pointed away from its own API offers None without waiting for a declaration.
+    var offersNoEffort: Bool {
         provider.apiShape(for: URL(string: baseURL)) == .openAICompatible
             && baseURL.trimmingCharacters(in: .whitespacesAndNewlines) != provider.defaultBaseURL
     }
 
-    /// A gateway's `none` is its thinking switch, offered without a declaration.
     var declarableLevels: [String] {
         let none = ReasoningOptions.noEffort
         switch provider {
         case .openRouter: return []
-        case _ where takesThinkingField: return ReasoningOptions.ladder
+        case _ where offersNoEffort: return ReasoningOptions.ladder
         case .anthropic: return ["low", "medium", "high", "xhigh", "max"]
         case .gemini: return ["minimal", "low", "medium", "high", none]
         case .openAI, .openAICompatible: return ReasoningOptions.ladder + [none]
@@ -116,7 +114,7 @@ struct AIConnection: Codable, Equatable, Identifiable, Sendable {
     var takesDeclaredLevels: Bool { !declarableLevels.isEmpty }
 
     func reasoningOptions(for model: String) -> ReasoningOptions? {
-        reasoningOptions?[model] ?? (takesThinkingField ? .thinkingSwitch : nil)
+        reasoningOptions?[model] ?? (offersNoEffort ? .defaultOptions : nil)
     }
 
     /// A chat keeps the effort it was given, so one this model no longer offers is never sent.
@@ -142,7 +140,7 @@ struct AIConnection: Codable, Equatable, Identifiable, Sendable {
             reasoningOptions?[model] = nil
             return
         }
-        if takesThinkingField { efforts.append(ReasoningOptions.noEffort) }
+        if offersNoEffort { efforts.append(ReasoningOptions.noEffort) }
         if reasoningOptions == nil { reasoningOptions = [:] }
         reasoningOptions?[model] = ReasoningOptions(
             efforts: [ReasoningOptions.providerDefault] + efforts,
@@ -385,19 +383,17 @@ struct AIHTTPConfiguration: Equatable, Sendable {
     let baseURL: URL
     let model: String
     let effort: String?
-    let disablesThinking: Bool
     let maxOutputTokens: Int?
     let headers: [String: String]
 
     init(
         provider: AIProviderKind, baseURL: URL, model: String, effort: String? = nil,
-        disablesThinking: Bool = false, maxOutputTokens: Int? = nil, headers: [String: String] = [:]
+        maxOutputTokens: Int? = nil, headers: [String: String] = [:]
     ) {
         self.provider = provider
         self.baseURL = baseURL
         self.model = model
         self.effort = effort
-        self.disablesThinking = disablesThinking
         self.maxOutputTokens = maxOutputTokens
         self.headers = headers
     }

@@ -89,8 +89,6 @@ enum AIProviderFactory {
             let provider = HTTPAIProvider(
                 configuration: AIHTTPConfiguration(
                     provider: connection.provider, baseURL: baseURL, model: model, effort: effort,
-                    disablesThinking: effort == AIConnection.ReasoningOptions.noEffort
-                        && connection.takesThinkingField,
                     maxOutputTokens: connection.outputLimits?[model], headers: headers),
                 apiKey: key)
             guard let toolSession, !toolSession.tools.isEmpty else { return provider }

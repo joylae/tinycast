@@ -78,12 +78,9 @@ enum AIRequestBody {
         if let effort = configuration.requestedEffort {
             if configuration.provider == .openRouter {
                 body["reasoning"] = ["effort": effort]
-            } else if !configuration.disablesThinking {
+            } else {
                 body["reasoning_effort"] = effort
             }
-        }
-        if configuration.disablesThinking {
-            body["thinking"] = ["type": "disabled"]
         }
         if !input.tools.isEmpty {
             body["tools"] = input.tools.map {

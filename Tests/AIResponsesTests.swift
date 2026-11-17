@@ -48,8 +48,8 @@ struct AIResponsesTests {
                 native.endpointURL.path == "/v1/responses",
                 "a saved base or full endpoint resolves Responses once at \(path)")
             expect(
-                !AIConnection(provider: .openAI, baseURL: url.absoluteString).takesThinkingField,
-                "an official endpoint never receives a gateway's thinking control")
+                !AIConnection(provider: .openAI, baseURL: url.absoluteString).offersNoEffort,
+                "an official endpoint offers None only after it is declared")
         }
         for (provider, url) in [
             (AIProviderKind.openAI, "https://gateway.example/v1"),
