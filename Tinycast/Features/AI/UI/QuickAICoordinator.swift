@@ -8,7 +8,6 @@ final class QuickAICoordinator {
     private let palette: PaletteState
     private let paletteCoordinator: PaletteCoordinator
     private unowned let core: AppCore
-
     init(
         chats: AIChatSurfacesState, settings: AppSettings, palette: PaletteState,
         paletteCoordinator: PaletteCoordinator, core: AppCore
@@ -26,6 +25,14 @@ final class QuickAICoordinator {
 
     func show() {
         guard settings.aiEnabled else { return }
+        if core.quickActionCoordinator.chatSession != nil {
+            if paletteCoordinator.isShowing(.ai) {
+                paletteCoordinator.hidePalette()
+            } else {
+                paletteCoordinator.showPalette(mode: .ai)
+            }
+            return
+        }
         // Not `togglePalette`: the open policy decides a chat only on the way in.
         guard !paletteCoordinator.isShowing(.ai) else {
             paletteCoordinator.hidePalette()
@@ -38,6 +45,7 @@ final class QuickAICoordinator {
     /// A link's text, typed but never sent: whether to ask is still the reader's call.
     func show(draft: String) {
         guard settings.aiEnabled else { return }
+        core.quickActionCoordinator.discardChat()
         applyOpenPolicy()
         paletteCoordinator.showPalette(mode: .ai, seeding: draft)
     }
@@ -45,6 +53,11 @@ final class QuickAICoordinator {
     /// ⇥ and the AI fallback: a fresh chat that carries the question, already asked.
     func ask(_ prompt: String) {
         guard settings.aiEnabled else { return }
+        if core.quickActionCoordinator.chatSession != nil {
+            show()
+            return
+        }
+        core.quickActionCoordinator.discardChat()
         // No question is no reason to skip the open policy: this is a summon, not an ask.
         guard !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             show()
@@ -57,7 +70,11 @@ final class QuickAICoordinator {
 
     /// Off leaves the screen too, so the palette never shows a feature that is gone.
     func leave() {
-        if palette.mode == .ai || palette.mode == .aiHistory { palette.prepare(mode: .launcher) }
+        if core.quickActionCoordinator.chatSession == nil,
+            palette.mode == .ai || palette.mode == .aiHistory
+        {
+            palette.prepare(mode: .launcher)
+        }
     }
 
     /// A file pasted at the launcher belongs in Quick AI, never in a search for its name.
@@ -155,6 +172,23 @@ final class QuickAICoordinator {
 
     func copyLastResponse() {
         chatCoordinator.copyLastResponse(in: chat)
+    }
+
+    func pasteLastResponse() {
+        guard let text = chat.lastCompletedResult else { return }
+        let target = paletteCoordinator.previousTarget
+        guard let target else {
+            Paster.copyPlainText(text)
+            core.showMessage(
+                String(localized: "Couldn't paste the answer — copied instead"), tone: .danger)
+            return
+        }
+        core.quickActionCoordinator.deliverQuickAI(text, target: target)
+    }
+
+    func quickAIDidDeliver() {
+        paletteCoordinator.hidePalette(restoreFocus: false)
+        chat.startNewChat()
     }
 
     /// Backspace on an empty composer takes the last staged image before it backs out of chat.

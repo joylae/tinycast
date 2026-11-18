@@ -1,10 +1,11 @@
-# Quick Actions
+# AI Quick Actions
 
 Act on whatever text is selected, in whatever app is frontmost. Four are shipped: Fix Grammar,
 Rewrite, Translate and Summarize, each with its own bindable shortcut **and its own launcher command**,
-both listed in **Settings → Quick Actions**. Three go through the AI provider layer; Translate goes to
-Apple's own translator. The result either replaces the selection or arrives in a floating panel, per
-action.
+both listed in **Settings → AI Quick Actions**. Three go through the AI provider layer; Translate
+goes to Apple's own translator. The result either replaces the selection or opens in Quick AI, per
+action. Simplified Chinese calls the feature 「AI快捷操作」; code, settings and persisted identifiers
+keep their original Quick Action names.
 
 A **custom Quick Action** is a name, a glyph and a prompt, run through the same provider. It takes a
 shortcut and a launcher row like any other.
@@ -17,10 +18,28 @@ policy and tool-round limit as Quick AI. API routes use Tinycast's tool loop, Co
 their native MCP clients, and tool-capable OpenCode models use the existing bridge. On-device,
 Grok and Cursor routes do not offer MCP tools; Apple Translation remains independent of models.
 Quick Actions use all enabled, permitted servers rather than inheriting a live chat's temporary
-tools menu or `@server` filter. An Ask Each Chat grant lasts for one action run and is released
-when it finishes or is cancelled.
+tools menu or `@server` filter. An Ask Each Chat grant lasts for one preview session, or one direct
+run, and is released when it finishes, is cancelled or moves to AI Chat.
 Only the final model round becomes the replacement: text emitted before a tool call is cleared
 from the result and preview, so a tool-use preamble cannot be pasted into the source document.
+
+## Preview sessions
+
+Every preview except Translate reuses Quick AI's palette screen. The original selection is the
+first user message, folded when long, while the provider still receives the action's delimiter and
+full instructions. Follow-ups are plain text, retain the action's instructions and route, and do not
+stage attachments. An Ask Each Chat grant lasts for the whole temporary session.
+
+The session is ephemeral: nothing is written to chat history until ⌘J explicitly continues it in
+AI Chat, which carries the transcript, model and preset but not the original replacement target.
+Hiding the palette preserves the session within the normal Pop to Root Search window; timing out,
+starting another action or delivering successfully discards it.
+
+An empty composer pastes on ↵, text changes the pill to Send, and an in-flight turn offers Stop.
+⌘↵ copies the latest completed assistant reply's Markdown without changing the panel or draft.
+Model and effort choices affect only this session, never the action's stored route; ⌘R regenerates
+with the current model and ⇧⌘R picks a model and regenerates. The original target and selection
+remain captured throughout, so delivery always replaces the passage the action started from.
 
 ## Invariants
 
@@ -71,7 +90,7 @@ from the result and preview, so a tool-use preamble cannot be pasted into the so
 - **The model picker is the AI picker.** Both panes render `AIModelOption.groupedCatalog`, with the
   same provider sections, model labels and provider-supported reasoning levels. An installed-model
   selection stores its effort in `quickActionModel`, independently of chat's effort. The sheets use the
-  same `AIModelSelectionRows`, with **Same as Quick Actions** as the `nil` choice.
+  same `AIModelSelectionRows`, with **Same as AI Quick Actions** as the `nil` choice.
 - **The reader's own text gets permissive guardrails.** `AppCore.quickActionProvider()` asks for
   `SystemLanguageModel.Guardrails.permissiveContentTransformations`. The default filter is tuned for
   a model writing fresh prose and refuses to transform text somebody already wrote, which is the
@@ -94,8 +113,8 @@ from the result and preview, so a tool-use preamble cannot be pasted into the so
 
 ## The actions
 
-`QuickAction` is `.builtIn(BuiltInQuickAction)` or `.custom(CustomQuickAction)`. Coordinator, panel,
-runner and prompt all take that one type, and neither half has a code path of its own.
+`QuickAction` is `.builtIn(BuiltInQuickAction)` or `.custom(CustomQuickAction)`. Coordinator, preview
+state, runner and prompt all take that one type.
 
 A fifth *shipped* action is one `BuiltInQuickAction` case, its prompt in `QuickActionPrompt`, and one
 `CommandID` case for its launcher row. `CommandID.init(_ action:)` is exhaustive, so it cannot compile
@@ -197,9 +216,10 @@ so a shortcut never silently does nothing. **The download happens in System Sett
 to go — Language & Region → Translation Languages… — and its one button opens that pane and closes
 the panel. System Settings has no anchor for the sheet itself, so the last click stays the reader's.
 
-## The panel
+## Translate's panel
 
-`QuickActionPanel` is Tinycast's **fourth borderless surface**, beside the dialog, the notes panel
+Translate alone keeps `QuickActionPanel`, Tinycast's **fourth borderless surface**, beside the
+dialog, the notes panel
 and the join preview. It takes the same recipe — `panelScrim`, then `GlassEffectView`, then the
 clip — and sits at `.floating` like the join preview, so a failure report still lands on top of it.
 Its footer speaks the same button language as a dialog's — `ModalActionButtonStyle`, with Replace
@@ -317,8 +337,20 @@ failure handler, so automatic expansion stays silent as before.
 - Give Fix Grammar and a custom action an alias in the pane, then type each alias in ⌘Space.
 - Press a shortcut with Tinycast's own Settings window frontmost: refused, with a HUD.
 - Press one in a password field: refused.
-- Summarize a long selection: the panel streams, grows without the title drifting, and scrolls past
-  `quickActionPanelBody`.
+- Summarize a long selection: Quick AI streams in the palette, then accepts a follow-up. Empty
+  input pastes, typed input sends, and ⌘↵ copies the latest completed answer without closing.
+- Rewrite twice with follow-ups: the final paste replaces the original selection, and the diff
+  compares it with the original rather than the intermediate answer.
+- Hide and restore Quick AI within the restore window: the action session survives; after Pop to
+  Root Search expires, its next summon starts fresh and no chat-history row exists.
+- ⌘J carries the session into AI Chat with its model and preset; subsequent changes persist, but
+  there is no replacement target.
+- Switch models in Quick AI and in an action preview: neither changes the default for a new chat;
+  ⌘R and ⇧⌘R regenerate as named.
+- ⌘↵ copies the last completed answer in Quick AI and AI Chat. ⇧⌘C has no AI copy action; ⌘C
+  copies only a text selection.
+- In Quick AI, empty input pastes the last completed answer into the previous app. With no target
+  or a refused delivery, the palette stays open and a HUD says it copied instead.
 - Replace Rewrite's instructions, confirm only Rewrite follows them after relaunch, then use the
   modal's default and confirm the shipped behaviour returns.
 - Give Summarize its own model and effort: the row names them, only Summarize uses them, and they

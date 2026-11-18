@@ -21,7 +21,7 @@ struct QuickActionsSettingsView: View {
             Section {
                 Toggle(isOn: enabledBinding) {
                     SettingsFeatureToggleLabel(
-                        anchor: .quickActionsQuickActions, title: "Enable Quick Actions",
+                        anchor: .quickActionsQuickActions, title: "Enable AI Quick Actions",
                         subtitle: "Act on selected text. Nothing is read until you press a shortcut.")
                 }
                 if appSettings.quickActionsEnabled, !isTrusted {
@@ -108,7 +108,7 @@ struct QuickActionsSettingsView: View {
             Button {
                 customEditing = CustomQuickActionEditRequest(action: nil)
             } label: {
-                SettingsRowTitle(.quickActionsActions, "Add Quick Action")
+                SettingsRowTitle(.quickActionsActions, "Add AI Quick Action")
             }
         } header: {
             SettingsSectionHeader(.quickActionsActions)

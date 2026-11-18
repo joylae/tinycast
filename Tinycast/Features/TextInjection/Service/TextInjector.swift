@@ -212,13 +212,16 @@ final class TextInjector {
     func replaceSelection(
         with text: String,
         in targetApp: NSRunningApplication?,
+        activateTarget: Bool = true,
+        isValid: @escaping @MainActor () -> Bool = { true },
         onDelivered: @escaping @MainActor () -> Void = {},
         onFailed: @escaping @MainActor () -> Void = {}
     ) {
         deliver(
             InjectedText(text), target: targetApp.map(InjectionTarget.external),
             expectedKeyword: nil, keywordLength: 0,
-            automaticGeneration: nil, onDelivered: onDelivered, onFailed: onFailed)
+            automaticGeneration: nil, activateTarget: activateTarget,
+            isValid: isValid, onDelivered: onDelivered, onFailed: onFailed)
     }
 
     /// A `changeCount` that never moves means nothing was selected, not that the old clipboard won.
@@ -281,12 +284,13 @@ final class TextInjector {
         expectedKeyword: String?,
         keywordLength: Int,
         automaticGeneration: AutomaticGeneration?,
+        activateTarget: Bool = true,
         isValid: @escaping @MainActor () -> Bool = { true },
         onDelivered: @escaping @MainActor () -> Void = {},
         onFailed: @escaping @MainActor () -> Void = {}
     ) {
         let targetApp = target?.externalApp
-        activate(targetApp)
+        if activateTarget { activate(targetApp) }
         if let automaticGeneration {
             guard expansionIsAllowed(generation: automaticGeneration, target: target) else { return }
         } else {
@@ -317,6 +321,7 @@ final class TextInjector {
                 expectedKeyword: expectedKeyword,
                 keywordLength: keywordLength,
                 automaticGeneration: automaticGeneration,
+                activateTarget: activateTarget,
                 completion: completion)
         }
     }
@@ -369,17 +374,20 @@ final class TextInjector {
         expectedKeyword: String?,
         keywordLength: Int,
         automaticGeneration: AutomaticGeneration?,
+        activateTarget: Bool = true,
         completion: DeliveryCompletion
     ) async {
         defer { completion.settle() }
         guard finishPendingPasteboardOwnership(),
             await activateAndWaitForTarget(
                 targetApp,
-                automaticGeneration: automaticGeneration),
+                automaticGeneration: automaticGeneration,
+                activateTarget: activateTarget),
             deliveryIsAllowed(
                 automaticGeneration: automaticGeneration,
                 targetApp: targetApp,
-                promptForInteractiveAccessibility: true)
+                promptForInteractiveAccessibility: true,
+                activateTarget: activateTarget)
         else { return }
 
         let accessibilityReplacement = await replaceUsingAccessibility(
@@ -399,7 +407,8 @@ final class TextInjector {
                 injected.text,
                 keywordLength: keywordLength,
                 targetApp: targetApp,
-                automaticGeneration: automaticGeneration)
+                automaticGeneration: automaticGeneration,
+                activateTarget: activateTarget)
         else { return }
 
         guard let offset = injected.cursorOffsetFromEnd, offset > 0 else {
@@ -411,7 +420,8 @@ final class TextInjector {
                 deliveryIsAllowed(
                     automaticGeneration: automaticGeneration,
                     targetApp: targetApp,
-                    promptForInteractiveAccessibility: false),
+                    promptForInteractiveAccessibility: false,
+                    activateTarget: activateTarget),
                 postKey(code: CGKeyCode(kVK_LeftArrow), targetApp: targetApp)
             else { return }
             if index < offset - 1,
@@ -427,7 +437,8 @@ final class TextInjector {
         _ text: String,
         keywordLength: Int,
         targetApp: NSRunningApplication?,
-        automaticGeneration: AutomaticGeneration?
+        automaticGeneration: AutomaticGeneration?,
+        activateTarget: Bool
     ) async -> Bool {
         let isShortSingleLine =
             text.count <= 100
@@ -438,7 +449,8 @@ final class TextInjector {
                 text,
                 keywordLength: keywordLength,
                 targetApp: targetApp,
-                automaticGeneration: automaticGeneration)
+                automaticGeneration: automaticGeneration,
+                activateTarget: activateTarget)
         }
 
         guard let lease = beginTemporaryPasteboardLease(text) else {
@@ -446,7 +458,8 @@ final class TextInjector {
                 text,
                 keywordLength: keywordLength,
                 targetApp: targetApp,
-                automaticGeneration: automaticGeneration)
+                automaticGeneration: automaticGeneration,
+                activateTarget: activateTarget)
         }
         activePasteboardLease = lease
         defer { finish(lease) }
@@ -457,17 +470,20 @@ final class TextInjector {
             deliveryIsAllowed(
                 automaticGeneration: automaticGeneration,
                 targetApp: targetApp,
-                promptForInteractiveAccessibility: false),
+                promptForInteractiveAccessibility: false,
+                activateTarget: activateTarget),
             await postEventGroups(
                 deletionEvents,
                 targetApp: targetApp,
-                automaticGeneration: automaticGeneration),
+                automaticGeneration: automaticGeneration,
+                activateTarget: activateTarget),
             await waitAfterKeywordDeletion(keywordLength),
             lease.isOwned,
             deliveryIsAllowed(
                 automaticGeneration: automaticGeneration,
                 targetApp: targetApp,
-                promptForInteractiveAccessibility: false)
+                promptForInteractiveAccessibility: false,
+                activateTarget: activateTarget)
         else { return false }
 
         let stateBeforePaste = accessibilityTextState(in: targetApp)
@@ -476,30 +492,35 @@ final class TextInjector {
             previousState: stateBeforePaste,
             pasteboardLease: lease,
             targetApp: targetApp,
-            automaticGeneration: automaticGeneration)
+            automaticGeneration: automaticGeneration,
+            activateTarget: activateTarget)
     }
 
     private func deliverUsingUnicodeEvents(
         _ text: String,
         keywordLength: Int,
         targetApp: NSRunningApplication?,
-        automaticGeneration: AutomaticGeneration?
+        automaticGeneration: AutomaticGeneration?,
+        activateTarget: Bool
     ) async -> Bool {
         guard let insertionEvents = makeUnicodeEvents(text),
             let deletionEvents = makeDeletionEvents(count: keywordLength),
             deliveryIsAllowed(
                 automaticGeneration: automaticGeneration,
                 targetApp: targetApp,
-                promptForInteractiveAccessibility: false),
+                promptForInteractiveAccessibility: false,
+                activateTarget: activateTarget),
             await postEventGroups(
                 deletionEvents,
                 targetApp: targetApp,
-                automaticGeneration: automaticGeneration),
+                automaticGeneration: automaticGeneration,
+                activateTarget: activateTarget),
             await waitAfterKeywordDeletion(keywordLength),
             await postEventGroups(
                 insertionEvents,
                 targetApp: targetApp,
-                automaticGeneration: automaticGeneration)
+                automaticGeneration: automaticGeneration,
+                activateTarget: activateTarget)
         else { return false }
 
         return await wait(for: .milliseconds(100))
@@ -509,14 +530,16 @@ final class TextInjector {
     private func postEventGroups(
         _ events: [[CGEvent]],
         targetApp: NSRunningApplication?,
-        automaticGeneration: AutomaticGeneration?
+        automaticGeneration: AutomaticGeneration?,
+        activateTarget: Bool
     ) async -> Bool {
         for index in events.indices {
             guard
                 deliveryIsAllowed(
                     automaticGeneration: automaticGeneration,
                     targetApp: targetApp,
-                    promptForInteractiveAccessibility: false)
+                    promptForInteractiveAccessibility: false,
+                    activateTarget: activateTarget)
             else { return false }
             post(events[index], targetApp: targetApp)
             if index < events.count - 1,
@@ -568,7 +591,8 @@ final class TextInjector {
     private func deliveryIsAllowed(
         automaticGeneration: AutomaticGeneration?,
         targetApp: NSRunningApplication?,
-        promptForInteractiveAccessibility: Bool
+        promptForInteractiveAccessibility: Bool,
+        activateTarget: Bool = true
     ) -> Bool {
         if let automaticGeneration {
             guard
@@ -584,9 +608,10 @@ final class TextInjector {
         }
         // Re-checked before every post, so a target that went away or went secure stops delivery.
         guard targetAcceptsInjection(targetApp), let targetApp,
-            targetApp.isActive,
-            NSWorkspace.shared.frontmostApplication?.processIdentifier
-                == targetApp.processIdentifier
+            activateTarget
+                ? targetApp.isActive && NSWorkspace.shared.frontmostApplication?.processIdentifier
+                    == targetApp.processIdentifier
+                : !targetApp.isTerminated
         else { return false }
         return promptForInteractiveAccessibility
             ? Permissions.ensureAccessibility()
@@ -600,8 +625,16 @@ final class TextInjector {
 
     private func activateAndWaitForTarget(
         _ targetApp: NSRunningApplication?,
-        automaticGeneration: AutomaticGeneration?
+        automaticGeneration: AutomaticGeneration?,
+        activateTarget: Bool = true
     ) async -> Bool {
+        guard activateTarget else {
+            return deliveryIsAllowed(
+                automaticGeneration: automaticGeneration,
+                targetApp: targetApp,
+                promptForInteractiveAccessibility: false,
+                activateTarget: false)
+        }
         guard let targetApp else {
             return deliveryIsAllowed(
                 automaticGeneration: automaticGeneration,
@@ -775,7 +808,8 @@ final class TextInjector {
         previousState: AccessibilityTextState?,
         pasteboardLease: TemporaryPasteboardLease,
         targetApp: NSRunningApplication?,
-        automaticGeneration: AutomaticGeneration?
+        automaticGeneration: AutomaticGeneration?,
+        activateTarget: Bool
     ) async -> Bool {
         var readStateAfterPaste = false
         for attempt in 0..<80 {
@@ -783,7 +817,8 @@ final class TextInjector {
                 deliveryIsAllowed(
                     automaticGeneration: automaticGeneration,
                     targetApp: targetApp,
-                    promptForInteractiveAccessibility: false)
+                    promptForInteractiveAccessibility: false,
+                    activateTarget: activateTarget)
             else { return false }
 
             if let previousState,

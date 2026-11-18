@@ -50,7 +50,7 @@ enum SettingsTab: CaseIterable, Identifiable {
         case .appleShortcuts: return String(localized: "Apple Shortcuts")
         case .fallbacks: return String(localized: "Fallbacks")
         case .ai: return String(localized: "AI")
-        case .quickActions: return String(localized: "Quick Actions")
+        case .quickActions: return String(localized: "AI Quick Actions")
         case .dictation: return String(localized: "Dictation")
         case .fileSearch: return String(localized: "File Search")
         case .notes: return String(localized: "Notes")

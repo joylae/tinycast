@@ -475,10 +475,17 @@ The built-in `Quick AI` launcher command enters `AIScreen`, and carries a bindab
 third way in. Settings → AI holds the recorder and a checkbox for the command's place in launcher
 search, beside `AI Chat`'s; either shortcut keeps working while its command is hidden, and does
 nothing at all while the feature is off. The palette search field becomes the single-line composer.
-The footer pill and Return are one action, `activate`: Send, or Stop while a response streams — an
-empty composer sends nothing, so the pill never needs a disabled state. The header's trailing model
+The footer pill and Return are one action, `activate`: Paste when the composer is empty and a
+completed result exists, Send when it holds text, or Stop while a response streams. Paste uses the
+latest completed assistant reply's original Markdown, never reasoning, tools, suggestions or a
+partial/failed turn, and targets the app the palette covered. Success closes the palette and clears
+the resident chat without deleting its saved history; a missing target or failed delivery keeps the
+panel and draft, copies the reply as a fallback and reports that it copied. Copying with ⌘↵ keeps the
+panel, draft and scroll position. Accessibility is requested on the first actual paste, not when AI
+is enabled. The header's trailing model
 switcher opens by click or ⌘P, uses the same in-window menu control as Clipboard's type filter and
-changes the chat route for the next message. For installed routes and OpenRouter models whose catalog
+changes this chat's route for the next message without moving the default for a new chat. For
+installed routes and OpenRouter models whose catalog
 reports the capability, it also shows the supported reasoning efforts and changes the chat effort for
 the next message. Other API routes keep their provider default because their model catalogs expose no
 portable effort contract. Neither change interrupts a response already streaming; stopping one is
@@ -486,7 +493,8 @@ the pill's job, so the header never has to fit a third control beside the switch
 
 The second footer control is the palette's normal Actions (`⌘K`) menu. It owns Continue in AI Chat
 (`⌘J`; Open AI Chat while the chat is empty), New Chat (`⌘N`), Chat History (`⌘Y`) and AI Settings
-(`⌥⌘,`), plus Stop Response (`⌘.`), Regenerate Response (`⌘R`), Copy Last Response (`⇧⌘C`) and
+(`⌥⌘,`), plus Stop Response (`⌘.`), Regenerate Response (`⌘R`), Regenerate with Model… (`⇧⌘R`),
+Copy Last Response (`⌘↵`) and
 Remove Attachments when those apply. The chords are Raycast's where it has one, and `AIScreen.perform`
 maps each `PaletteShortcut` to its action. AI Settings takes ⌥⌘, because ⌘, stays the app's own
 Settings on every screen. Continuing closes the palette and carries the half-typed line into the
@@ -561,7 +569,7 @@ and the Actions menu's own chords, and dies with the window.
   the end of what has arrived. It is a lexer, not a parser: it never rejects input, so what it
   cannot classify stays plain.
 - **Actions** (⌘K): Quick AI's ⌘K menu for a window, on the same chords — Stop Response (`⌘.`), New
-  Chat (`⌘N`), Regenerate (`⌘R`), Copy Last Response (`⇧⌘C`), Remove Attachments, Find in Chat
+  Chat (`⌘N`), Regenerate (`⌘R`), Copy Last Response (`⌘↵`), Remove Attachments, Find in Chat
   (`⌘F`) and AI Settings (`⌥⌘,`) — plus what only a saved chat has: Copy Chat, Pin and Delete.
   `AIChatActionsMenu` builds it per open from the chat's state, as an `NSMenu` hung under the
   toolbar button whether the click or ⌘K opened it.
@@ -849,8 +857,9 @@ search context for follow-ups. A successful reply allows the next request to con
 only when its prior transcript, model, instructions and web-search permission still match. A
 regenerated, failed or cancelled reply, a trimmed transcript or a changed configuration starts a
 fresh thread and injects the supplied user/assistant history. Turns with attachments are not retained,
-so older attachments still leave the next request. Titles and Quick Actions have no conversation ID
-and always start fresh. Deleting a chat drops its retained context, and resetting or restarting the
+so older attachments still leave the next request. Titles and direct-replace Quick Actions have no
+conversation ID and always start fresh; preview sessions retain theirs across follow-ups. Deleting
+a chat drops its retained context, and resetting or restarting the
 helper clears every retained thread.
 
 It streams agent-message deltas, plus `item/started` for the reasoning and web-search items that feed
@@ -1051,9 +1060,9 @@ not arrive on another Mac unread.
 
 Settings → AI is a normal grouped `Form` inside Tinycast's existing Settings window. Its top AI
 section owns the feature switch and the **Providers → Manage…** action, and **Default model** below
-it picks the app-wide route and its reasoning effort. A
-pick in Quick AI's header or the AI Chat composer sets that chat's model and moves this default with
-it, while Quick Actions keeps its own model selection.
+it picks the app-wide route and its reasoning effort. A pick in Quick AI's header changes only that
+chat; a pick in the AI Chat composer also moves this default, while Quick Actions keeps its own model
+selection.
 
 Provider management opens as an editor panel laid out like Mail's Accounts: every route in a list on
 the left — **On This Mac**, **Installed**, **API Connections** — each with its mark and a one-line

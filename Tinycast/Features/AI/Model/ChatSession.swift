@@ -47,7 +47,8 @@ struct ChatSession: Equatable, Sendable {
             historyMessages.map { message in
                 AIMessage(
                     role: message.role == .user ? .user : .assistant,
-                    text: message.text, images: message.images, documents: message.documents)
+                    text: message.requestText ?? message.text,
+                    images: message.images, documents: message.documents)
             }, textBudget: textBudget)
     }
 

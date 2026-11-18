@@ -200,7 +200,7 @@ final class AIChatWindowChrome: NSObject, WindowChrome, NSToolbarDelegate, NSSea
             coordinator.newChat()
         case ([.command], "r") where AIChatActionsMenu.canRegenerate(chat):
             coordinator.regenerate(in: chat)
-        case ([.command, .shift], "c") where chat.lastAssistantText != nil:
+        case ([.command], "\r") where chat.lastCompletedResult != nil:
             coordinator.copyLastResponse(in: chat)
         case ([.command], ".") where chat.isStreaming:
             coordinator.stopResponse(in: chat)
@@ -249,11 +249,11 @@ enum AIChatActionsMenu {
                 })
         }
         menu.addItem(.separator())
-        if chat.lastAssistantText != nil {
+        if chat.lastCompletedResult != nil {
             menu.addItem(
                 ClosureMenuItem(
-                    String(localized: "Copy Last Response"), symbol: "doc.on.doc", key: "c",
-                    modifiers: [.command, .shift]
+                    String(localized: "Copy Last Response"), symbol: "doc.on.doc", key: "\r",
+                    modifiers: [.command]
                 ) {
                     coordinator.copyLastResponse(in: chat)
                 })

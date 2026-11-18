@@ -9,6 +9,7 @@ struct AIScreen: PaletteScreen {
     let chatCoordinator: AIChatCoordinator
     /// The staged files' menu is the palette's to hang, like every other header menu.
     let openAttachments: () -> Void
+    let openModel: () -> Void
 
     struct Row: Identifiable {
         let id = "ai-chat"
@@ -17,7 +18,11 @@ struct AIScreen: PaletteScreen {
     let rows = [Row()]
 
     var primaryActionTitle: String {
-        chat.isStreaming ? String(localized: "Stop") : String(localized: "Send")
+        switch chat.primaryAction(draft: vm.query) {
+        case .send: String(localized: "Send")
+        case .paste: String(localized: "Paste")
+        case .stop: String(localized: "Stop")
+        }
     }
 
     func actions(at selection: Int) -> PopoverMenuContent? {
@@ -52,13 +57,17 @@ struct AIScreen: PaletteScreen {
                 ) {
                     coordinator.regenerate()
                 })
+            items.append(
+                PopoverMenuItem(
+                    localizedTitle: "Regenerate with Model…", systemImage: "arrow.clockwise",
+                    shortcut: "⇧⌘R", action: openModel))
         }
-        if chat.lastAssistantText != nil {
+        if chat.lastCompletedResult != nil {
             items.append(
                 PopoverMenuItem(
                     localizedTitle: "Copy Last Response", systemImage: "doc.on.doc",
                     startsSection: true,
-                    shortcut: "⇧⌘C"
+                    shortcut: "⌘↵"
                 ) {
                     coordinator.copyLastResponse()
                 })
@@ -67,7 +76,7 @@ struct AIScreen: PaletteScreen {
             items.append(
                 PopoverMenuItem(
                     localizedTitle: "Remove Attachments", systemImage: "paperclip",
-                    startsSection: chat.lastAssistantText == nil
+                    startsSection: chat.lastCompletedResult == nil
                 ) {
                     coordinator.clearAttachments()
                 })
@@ -91,14 +100,21 @@ struct AIScreen: PaletteScreen {
     }
 
     func activate(at selection: Int) {
-        if chat.isStreaming {
+        switch chat.primaryAction(draft: vm.query) {
+        case .stop:
             coordinator.stopResponse()
-        } else if coordinator.send(vm.query) {
-            vm.query = ""
+        case .send:
+            if coordinator.send(vm.query) { vm.query = "" }
+        case .paste:
+            coordinator.pasteLastResponse()
         }
     }
 
-    func secondary(at selection: Int) -> Bool { false }
+    func secondary(at selection: Int) -> Bool {
+        guard chat.lastCompletedResult != nil else { return false }
+        coordinator.copyLastResponse()
+        return true
+    }
 
     /// Raycast's chords where it has one; ⌘Y is History, as in Safari, and ⌘. is Stop.
     func perform(_ shortcut: PaletteShortcut, at selection: Int) -> Bool {
@@ -106,7 +122,8 @@ struct AIScreen: PaletteScreen {
         case .continueInChat: coordinator.continueInChat()
         case .newItem: coordinator.startNewChat()
         case .restart where canRegenerate: coordinator.regenerate()
-        case .copyFile where chat.lastAssistantText != nil: coordinator.copyLastResponse()
+        case .restartWithModel where canRegenerate: openModel()
+        case .copyFile: return false
         case .quickLook: coordinator.showHistory()
         case .pin where chat.isStreaming: coordinator.stopResponse()
         case .settings: chatCoordinator.showSettings()

@@ -85,7 +85,7 @@ struct PaletteShortcutTests {
         expect(resolve("m", command: true), nil, "⌘M stays the app menu's Minimize")
         expect(resolve("h", shift: true, control: true), .hideApp, "⌃⇧H hides the app")
         expect(resolve("r", command: true), .restart, "⌘R restarts the app")
-        expect(resolve("r", command: true, shift: true), .restart, "an extra Shift still reads ⌘R")
+        expect(resolve("r", command: true, shift: true), .restartWithModel, "⇧⌘R picks a model")
 
         expect(resolve("j", command: true), .continueInChat, "⌘J continues Quick AI in AI Chat")
         expect(resolve("n", command: true), .newItem, "⌘N starts a new one")
@@ -107,7 +107,7 @@ struct PaletteShortcutTests {
         let expanded: [PaletteShortcut] = [
             .copyFile, .copyName, .copyPath, .copyText, .pasteFile, .quickLook, .openInApp,
             .showDetails, .toggleFavorite, .hideFromSearch, .quit, .forceQuit, .minimizeWindow,
-            .hideApp, .restart, .edit, .duplicate, .showInFinder
+            .hideApp, .restart, .restartWithModel, .edit, .duplicate, .showInFinder
         ]
         let anywhere: [PaletteShortcut] = [
             .commandDelete, .delete, .deleteAll, .pin, .favoriteSlot(0), .continueInChat, .newItem,
@@ -127,7 +127,7 @@ struct PaletteShortcutTests {
         ]
         let leaving: [PaletteShortcut] = [
             .commandDelete, .pasteFile, .quit, .forceQuit, .hideApp, .restart, .pin, .favoriteSlot(0),
-            .continueInChat
+            .continueInChat, .restartWithModel
         ]
         for shortcut in closing {
             expect(shortcut.closesMenu, "\(shortcut) closes an open menu")

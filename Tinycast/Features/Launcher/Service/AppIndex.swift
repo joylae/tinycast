@@ -36,8 +36,8 @@ struct AppEntry: Identifiable, Hashable, Sendable {
                     canRevealInFinder: false, canDragOut: false, isSymbolIcon: true, rankPriority: 3)
             case .quickAction:
                 return KindDescriptor(
-                    label: "Quick Action", sectionTitle: "Quick Actions",
-                    openVerb: "Run Quick Action", canHideFromSearch: true,
+                    label: "AI Quick Action", sectionTitle: "AI Quick Actions",
+                    openVerb: "Run AI Quick Action", canHideFromSearch: true,
                     canRevealInFinder: false, canDragOut: false, isSymbolIcon: true, rankPriority: 3)
             case .customCommand:
                 return KindDescriptor(

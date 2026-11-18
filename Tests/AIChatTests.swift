@@ -54,8 +54,12 @@ struct AIChatTests {
         renamesAndPinsSurviveSavesAndSpareRetention()
         transcriptsExportAndDropOnlyATrailingReply()
         await regenerateAsksTheSameQuestionAgain()
+        await theLatestCompletedResultSurvivesAFailedFollowUp()
         await requestsIdentifyTheirConversation()
         await aConversationIsLiveOnOneSurfaceAtATime()
+        await anEphemeralConversationIsSavedOnlyWhenItContinuesInTheWindow()
+        await aQuickActionKeepsItsRequestDelimiterOutOfTheTranscript()
+        await aQuickActionDropsTextBeforeToolCalls()
         await theWindowFollowsTheOpenPolicy()
         await everyStateReportsAFinishedReply()
         await reasoningFoldsIntoTheReplyAndIsNeverResent()
@@ -1335,7 +1339,7 @@ extension AIChatTests {
         ])
         chat.send("Why?", using: provider)
         await settle(chat)
-        expect(chat.lastAssistantText == "First", "the first reply arrives")
+        expect(chat.lastCompletedResult == "First", "the first reply arrives")
         expect(chat.regenerate(using: provider), "a finished reply can be regenerated")
         await settle(chat)
         expect(
@@ -1347,6 +1351,49 @@ extension AIChatTests {
         expect(
             store.session(id: chat.session.id)?.messages.map(\.text) == ["Why?", "Second"],
             "the stored transcript holds only the new reply")
+    }
+
+    static func theLatestCompletedResultSurvivesAFailedFollowUp() async {
+        let (store, directory) = temporaryStore("latest-completed-result")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let chat = AIChatState(history: store)
+        let provider = ScriptedProvider(rounds: [
+            [.text("First\n\n```choices\nTry again\n```"), .finished],
+            [.text("Partial"), .finished],
+        ])
+        chat.send("First question", using: provider)
+        await settle(chat)
+        expect(chat.lastCompletedResult == "First", "copy and paste omit the suggestions fence")
+
+        let failed = FailingProvider()
+        chat.send("Follow up", using: failed)
+        await settle(chat)
+        expect(
+            chat.lastCompletedResult == "First",
+            "a failed follow-up keeps the previous result, got \(String(describing: chat.lastCompletedResult))")
+        expect(chat.primaryAction(draft: "") == .paste, "an empty composer offers paste")
+        expect(chat.primaryAction(draft: "More") == .send, "a draft changes the action to send")
+
+        chat.send("Streaming", using: provider)
+        expect(chat.primaryAction(draft: "") == .stop, "a live reply offers stop")
+        await settle(chat)
+        expect(chat.lastCompletedResult == "Partial", "a later complete reply replaces the result")
+
+        chat.regenerate(using: FailingProvider())
+        expect(chat.lastCompletedResult == "Partial", "regeneration keeps its predecessor while streaming")
+        await settle(chat)
+        expect(chat.lastCompletedResult == "Partial", "a failed regeneration keeps its predecessor")
+
+        let empty = AIChatState(history: store, persistsHistory: false)
+        empty.send("Empty", using: ScriptedProvider(rounds: [[.finished]]))
+        await settle(empty)
+        expect(empty.lastCompletedResult == nil, "an empty response is not a deliverable result")
+
+        let choicesOnly = AIChatState(history: store, persistsHistory: false)
+        choicesOnly.send(
+            "Choices", using: ScriptedProvider(rounds: [[.text("```choices\nAgain\n```"), .finished]]))
+        await settle(choicesOnly)
+        expect(choicesOnly.lastCompletedResult == nil, "suggestions alone are not a result")
     }
 
     static func requestsIdentifyTheirConversation() async {
@@ -1511,6 +1558,61 @@ extension AIChatTests {
         chats.deleteAll()
         expect(chats.window.holds(settled), "Delete All leaves a pinned chat open")
         expect(store.conversation(id: quickID) == nil, "and removes the rest")
+    }
+
+    static func anEphemeralConversationIsSavedOnlyWhenItContinuesInTheWindow() async {
+        let (store, directory) = temporaryStore("ephemeral-transfer")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let chats = AIChatSurfacesState(history: store)
+        let chat = chats.makeEphemeralState()
+        let provider = ScriptedProvider(rounds: [
+            [.text("First"), .finished], [.text("Second"), .finished],
+        ])
+        chat.send("Selected text", using: provider)
+        await settle(chat)
+        chat.send("Follow up", using: provider)
+        await settle(chat)
+        expect(store.conversations.isEmpty, "ephemeral turns never enter chat history")
+
+        expect(chats.continueInWindow(chat, draft: "Next"), "the live session moves to the window")
+        expect(chats.window === chat, "the window keeps the same messages and streaming owner")
+        expect(chats.window.draft == "Next", "the composer draft crosses with the session")
+        expect(store.conversation(id: chat.session.id) != nil, "the explicit handoff saves the chat")
+    }
+
+    static func aQuickActionKeepsItsRequestDelimiterOutOfTheTranscript() async {
+        let (store, directory) = temporaryStore("quick-action-request")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let chat = AIChatState(
+            history: store, persistsHistory: false, clearsTextOnToolCall: true)
+        let provider = ScriptedProvider(rounds: [[.text("Result"), .finished]])
+        chat.send(
+            "selected text", using: provider, requestText: "Text:\nselected text",
+            maxOutputTokens: 123)
+        await settle(chat)
+        expect(chat.session.messages.first?.text == "selected text", "the reader sees the selection")
+        expect(
+            provider.requests.first?.messages.first?.text == "Text:\nselected text",
+            "the provider receives the action's delimiter")
+        expect(provider.requests.first?.maxOutputTokens == 123, "the action keeps its output budget")
+    }
+
+    static func aQuickActionDropsTextBeforeToolCalls() async {
+        let (store, directory) = temporaryStore("quick-action-tool-result")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let chat = AIChatState(
+            history: store, persistsHistory: false, clearsTextOnToolCall: true)
+        let provider = ScriptedProvider(rounds: [[
+            .text("I will inspect the text first."),
+            .toolCall(id: "read", origin: "Files", title: "Read"),
+            .toolResult(id: "read", isError: false),
+            .text("Final transformed text"), .finished,
+        ]])
+        chat.send("Selection", using: provider)
+        await settle(chat)
+        expect(
+            chat.lastCompletedResult == "Final transformed text",
+            "tool preambles never reach copy, paste or the final preview")
     }
 
     static func reasoningFoldsIntoTheReplyAndIsNeverResent() async {
@@ -1920,6 +2022,16 @@ final class ScriptedProvider: AIProvider, @unchecked Sendable {
         return AIProviderStream { continuation in
             for event in events { continuation.yield(event) }
             continuation.finish()
+        }
+    }
+}
+
+struct FailingProvider: AIProvider {
+    struct Failure: Error {}
+
+    func stream(_ request: AIRequest) -> AIProviderStream {
+        AIProviderStream { continuation in
+            continuation.finish(throwing: Failure())
         }
     }
 }

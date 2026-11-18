@@ -66,7 +66,7 @@ final class QuickActionRunner {
     }
 
     /// The on-device window counts the prompt and the reply against one budget, so both need a cap.
-    private static func maxOutputTokens(
+    static func maxOutputTokens(
         for action: QuickAction, selection: String, on provider: any AIProvider
     ) -> Int {
         guard provider is AppleIntelligenceProvider else { return AIRequest.defaultMaxOutputTokens }

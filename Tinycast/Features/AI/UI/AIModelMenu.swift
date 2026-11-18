@@ -2,8 +2,10 @@ import SwiftUI
 
 @MainActor
 enum AIModelMenu {
-    /// Every model configured for chat; selecting one moves this chat and the default with it.
-    static func models(coordinator: AIChatCoordinator, chat: AIChatState) -> PopoverMenuContent {
+    static func models(
+        coordinator: AIChatCoordinator, chat: AIChatState,
+        onSelect: ((AIModelOption) -> Void)? = nil
+    ) -> PopoverMenuContent {
         let groups = coordinator.modelGroups
         let loading = coordinator.isModelCatalogLoading
         var items = groups.flatMap { group in
@@ -12,7 +14,11 @@ enum AIModelMenu {
                     title: option.title, icon: option.menuIcon,
                     sectionTitle: index == 0 ? group.title : nil
                 ) {
-                    coordinator.selectModel(option, in: chat)
+                    if let onSelect {
+                        onSelect(option)
+                    } else {
+                        coordinator.selectModel(option, in: chat)
+                    }
                 }
             }
         }
@@ -34,7 +40,10 @@ enum AIModelMenu {
         return PopoverMenuContent(items: items)
     }
 
-    static func reasoning(coordinator: AIChatCoordinator, chat: AIChatState) -> PopoverMenuContent {
+    static func reasoning(
+        coordinator: AIChatCoordinator, chat: AIChatState,
+        onSelect: ((ChatGPTSubscription.Effort) -> Void)? = nil
+    ) -> PopoverMenuContent {
         let selected = coordinator.model(for: chat)?.effort
         return PopoverMenuContent(
             items: coordinator.reasoningEfforts(for: chat).map { effort in
@@ -42,7 +51,11 @@ enum AIModelMenu {
                     title: effort.title, icon: .blank,
                     detail: effort.id == selected ? "✓" : nil
                 ) {
-                    coordinator.selectReasoningEffort(effort, in: chat)
+                    if let onSelect {
+                        onSelect(effort)
+                    } else {
+                        coordinator.selectReasoningEffort(effort, in: chat)
+                    }
                 }
             })
     }

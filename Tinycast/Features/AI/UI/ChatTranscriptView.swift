@@ -25,6 +25,7 @@ struct ChatTranscriptView: View {
     /// Answers with one of the last reply's choices; nil leaves them unshown.
     var onChoose: ((String) -> Void)?
     var find: ChatFindHighlight?
+    var collapsesUserMessages = false
     /// Cleared when the reader scrolls up, so a streaming reply stops dragging them back down.
     @State private var followsTail = true
 
@@ -48,6 +49,7 @@ struct ChatTranscriptView: View {
                         ChatMessageView(
                             message: message,
                             surface: surface,
+                            collapsesUserMessage: collapsesUserMessages && message.role == .user,
                             status: isLast ? status : nil,
                             onRegenerate: isLast && message.role == .assistant
                                 ? onRegenerate : nil,
@@ -182,12 +184,28 @@ private struct ChatMessageView: View, @MainActor Equatable {
     @Environment(\.metrics) private var metrics
     let message: ChatMessage
     let surface: ChatSurface
+    let collapsesUserMessage: Bool
     let status: String?
     let onRegenerate: (() -> Void)?
     let onChoose: ((String) -> Void)?
     @Environment(\.chatTextHighlight) private var highlight
 
     @State private var hovered = false
+    @State private var expandsUserMessage = false
+
+    private var needsUserMessageFold: Bool {
+        collapsesUserMessage
+            && (message.text.count > 500 || message.text.filter(\.isNewline).count >= 10)
+    }
+
+    private var displayedUserMessage: String {
+        guard needsUserMessageFold, !expandsUserMessage else { return message.text }
+        if message.text.filter(\.isNewline).count >= 10 {
+            return message.text.split(separator: "\n", omittingEmptySubsequences: false)
+                .prefix(10).joined(separator: "\n") + "\n…"
+        }
+        return String(message.text.prefix(500)) + "…"
+    }
 
     /// The fence is the choices' carrier, never prose: it is left out of the text and the copy.
     private var parts: (text: String, choices: [String]) {
@@ -328,8 +346,20 @@ private struct ChatMessageView: View, @MainActor Equatable {
             }
             .environment(\.chatCitations, ChatReferences.numbers(for: references))
         } else {
-            Text(highlight?.attributed(message.text, leaf: [0]) ?? AttributedString(message.text))
-                .findAnchor(highlight, leaf: [0])
+            VStack(alignment: .leading, spacing: metrics.spacing.sm) {
+                Text(
+                    highlight?.attributed(displayedUserMessage, leaf: [0])
+                        ?? AttributedString(displayedUserMessage))
+                    .findAnchor(highlight, leaf: [0])
+                if needsUserMessageFold {
+                    Button(expandsUserMessage ? "Collapse" : "Show more") {
+                        expandsUserMessage.toggle()
+                    }
+                    .font(metrics.typography.rowTrailing)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                }
+            }
         }
     }
 }
@@ -337,6 +367,7 @@ private struct ChatMessageView: View, @MainActor Equatable {
 extension ChatMessageView {
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.message == rhs.message && lhs.surface == rhs.surface && lhs.status == rhs.status
+            && lhs.collapsesUserMessage == rhs.collapsesUserMessage
             && (lhs.onRegenerate == nil) == (rhs.onRegenerate == nil)
             && (lhs.onChoose == nil) == (rhs.onChoose == nil)
     }

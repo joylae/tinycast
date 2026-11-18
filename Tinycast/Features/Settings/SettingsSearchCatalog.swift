@@ -331,13 +331,13 @@ enum SettingsSearchCatalog {
             pane: .quickActions,
             keywords: ["selected text", "rewrite", "translate", "summarize"]),
         .init(
-            .quickActionsQuickActions, "Enable Quick Actions",
+            .quickActionsQuickActions, "Enable AI Quick Actions",
             keywords: ["selected text", "accessibility"]),
         .init(
             group: .quickActionsActions, "Actions",
             keywords: ["shortcut", "replace", "preview", "customize"]),
         .init(
-            .quickActionsActions, "Add Quick Action",
+            .quickActionsActions, "Add AI Quick Action",
             keywords: ["new", "custom", "prompt", "instructions", "alias"]),
         .init(
             .quickActionsModel, "Model",

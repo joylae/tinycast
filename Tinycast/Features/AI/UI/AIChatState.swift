@@ -4,6 +4,12 @@ import Observation
 @MainActor
 @Observable
 final class AIChatState {
+    enum PrimaryAction: Equatable {
+        case send
+        case paste
+        case stop
+    }
+
     private(set) var session = ChatSession()
     private(set) var isStreaming = false
     private(set) var isThinking = false
@@ -19,6 +25,8 @@ final class AIChatState {
     @ObservationIgnored private(set) var stagingGeneration = 0
 
     private let history: ChatHistoryStore
+    private(set) var persistsHistory: Bool
+    private let clearsTextOnToolCall: Bool
     @ObservationIgnored private var replyTask: Task<Void, Never>?
     @ObservationIgnored private var replyGeneration = 0
     /// Deltas buffered between flushes, so the transcript re-renders per cadence, not per token.
@@ -30,18 +38,30 @@ final class AIChatState {
     @ObservationIgnored var onReplyFinished: (@MainActor (AIChatState) -> Void)?
     @ObservationIgnored private var flushTask: Task<Void, Never>?
     @ObservationIgnored private var lastFlush = ContinuousClock().now
+    @ObservationIgnored private var completedResult: String?
 
     private static let flushInterval: Duration = .milliseconds(40)
 
-    init(history: ChatHistoryStore) {
+    init(
+        history: ChatHistoryStore, persistsHistory: Bool = true,
+        clearsTextOnToolCall: Bool = false
+    ) {
         self.history = history
+        self.persistsHistory = persistsHistory
+        self.clearsTextOnToolCall = clearsTextOnToolCall
+    }
+
+    func persistHistoryFromNowOn() {
+        persistsHistory = true
+        history.save(session)
     }
 
     @discardableResult
     func send(
         _ input: String, using provider: any AIProvider, model: AIModelSelection? = nil,
         webSearch: Bool = false, instructions: String? = nil,
-        contextBudget: Int = ChatSession.defaultTextBudget, toolScope: String? = nil
+        contextBudget: Int = ChatSession.defaultTextBudget, toolScope: String? = nil,
+        requestText: String? = nil, maxOutputTokens: Int? = nil
     ) -> Bool {
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty || !pendingAttachments.isEmpty, !isStreaming else { return false }
@@ -49,19 +69,20 @@ final class AIChatState {
         session.append(
             ChatMessage(
                 role: .user, text: text, images: pendingAttachments.compactMap(\.image),
-                documents: pendingAttachments.compactMap(\.document), toolScope: toolScope))
+                documents: pendingAttachments.compactMap(\.document), toolScope: toolScope,
+                requestText: requestText))
         clearStaging()
         if let model { session.model = model }
         startReply(
             using: provider, webSearch: webSearch, instructions: instructions,
-            contextBudget: contextBudget)
+            contextBudget: contextBudget, maxOutputTokens: maxOutputTokens)
         return true
     }
 
     /// The chat's own route from now on; a saved chat records it at once, a new one on first send.
     func setModel(_ model: AIModelSelection) {
         session.model = model
-        history.setModel(model, id: session.id)
+        if persistsHistory { history.setModel(model, id: session.id) }
     }
 
     /// Only an empty chat takes one; nil hands the chat back to the default model and every tool.
@@ -84,30 +105,33 @@ final class AIChatState {
     @discardableResult
     func regenerate(
         using provider: any AIProvider, model: AIModelSelection? = nil, webSearch: Bool = false,
-        instructions: String? = nil, contextBudget: Int = ChatSession.defaultTextBudget
+        instructions: String? = nil, contextBudget: Int = ChatSession.defaultTextBudget,
+        maxOutputTokens: Int? = nil
     ) -> Bool {
         guard !isStreaming, session.dropTrailingReply() else { return false }
         notice = nil
         if let model { session.model = model }
         startReply(
             using: provider, webSearch: webSearch, instructions: instructions,
-            contextBudget: contextBudget)
+            contextBudget: contextBudget, maxOutputTokens: maxOutputTokens)
         return true
     }
 
     private func startReply(
-        using provider: any AIProvider, webSearch: Bool, instructions: String?, contextBudget: Int
+        using provider: any AIProvider, webSearch: Bool, instructions: String?, contextBudget: Int,
+        maxOutputTokens: Int?
     ) {
         let request = AIRequest(
             instructions: instructions,
-            messages: session.requestMessages(textBudget: contextBudget), webSearch: webSearch,
-            conversationID: session.id)
+            messages: session.requestMessages(textBudget: contextBudget),
+            maxOutputTokens: maxOutputTokens ?? AIRequest.defaultMaxOutputTokens,
+            webSearch: webSearch, conversationID: session.id)
         session.append(ChatMessage(role: .assistant, text: "", state: .streaming))
         session.preset?.toolScope = toolScope
         isStreaming = true
         isThinking = false
         reasoningStartedAt = nil
-        history.save(session)
+        if persistsHistory { history.save(session) }
 
         replyGeneration += 1
         let generation = replyGeneration
@@ -192,6 +216,7 @@ final class AIChatState {
     private func clearSession() {
         if session.preset != nil { toolScope = ChatToolScope() }
         session = ChatSession()
+        completedResult = nil
         notice = nil
         clearStaging()
     }
@@ -204,6 +229,7 @@ final class AIChatState {
         let leavesPreset = session.preset != nil
         cancel()
         session = loaded
+        completedResult = nil
         if let preset = loaded.preset {
             toolScope = preset.toolScope
         } else if leavesPreset {
@@ -233,8 +259,24 @@ final class AIChatState {
 
     var liveStatus: String? { isThinking ? String(localized: "Thinking…") : nil }
 
-    var lastAssistantText: String? {
-        session.messages.last(where: { $0.role == .assistant && !$0.text.isEmpty })?.text
+    var lastCompletedResult: String? {
+        if let completedResult { return completedResult }
+        completedResult = Self.completedResult(in: session.messages)
+        return completedResult
+    }
+
+    private static func completedResult(in messages: [ChatMessage]) -> String? {
+        for message in messages.reversed()
+        where message.role == .assistant && message.state == .complete && !message.text.isEmpty {
+            let text = ChatChoices.split(message.text).text
+            if !text.isEmpty { return text }
+        }
+        return nil
+    }
+
+    func primaryAction(draft: String) -> PrimaryAction {
+        if isStreaming { return .stop }
+        return draft.isEmpty && lastCompletedResult != nil ? .paste : .send
     }
 
     private func receive(_ event: AIStreamEvent) {
@@ -271,6 +313,15 @@ final class AIChatState {
             message.searches = message.searches.map { Self.completed($0) }
             session.replaceLast(with: message)
         case .toolCall(let id, let origin, let title):
+            if clearsTextOnToolCall {
+                pendingText = ""
+                flushTask?.cancel()
+                flushTask = nil
+                if var message = session.messages.last, message.role == .assistant {
+                    message.text = ""
+                    session.replaceLast(with: message)
+                }
+            }
             flushPendingText()
             guard var message = session.messages.last, message.role == .assistant else { return }
             isThinking = false
@@ -291,7 +342,11 @@ final class AIChatState {
             message.usage = usage
             session.replaceLast(with: message)
         case .finished:
-            finishLast(state: .complete, fallback: String(localized: "No response"))
+            flushPendingText()
+            let empty = session.messages.last?.text.isEmpty != false
+            finishLast(
+                state: empty ? .failed : .complete,
+                fallback: String(localized: "No response"))
         }
     }
 
@@ -355,7 +410,11 @@ final class AIChatState {
         // A call still running when the turn ends never reported back, whatever ended the turn.
         message.toolUses = message.toolUses.map { Self.settled($0) }
         session.replaceLast(with: message)
-        history.save(session)
+        if state == .complete, !message.text.isEmpty {
+            let result = ChatChoices.split(message.text).text
+            if !result.isEmpty { completedResult = result }
+        }
+        if persistsHistory { history.save(session) }
         isStreaming = false
         isThinking = false
         replyTask = nil

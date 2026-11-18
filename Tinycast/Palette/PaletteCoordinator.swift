@@ -50,6 +50,8 @@ final class PaletteCoordinator {
     /// The own window the palette covered, for anything acting on it after the palette hides.
     var previousOwnWindow: NSWindow? { windowController.previousOwnWindow }
 
+    var previousTarget: InjectionTarget? { windowController.previousTarget }
+
     func isShowing(_ mode: PaletteMode) -> Bool {
         windowController.isVisible && palette.mode == mode
     }

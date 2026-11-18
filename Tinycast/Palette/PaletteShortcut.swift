@@ -40,6 +40,8 @@ enum PaletteShortcut: Equatable {
     case hideApp
     /// ⌘R.
     case restart
+    /// ⇧⌘R.
+    case restartWithModel
     /// ⌘N, a new one of whatever the screen holds.
     case newItem
     /// ⌘E, the row opened in its editor.
@@ -79,7 +81,7 @@ enum PaletteShortcut: Equatable {
         if control, shift, matches("q") { return option ? .forceQuit : .quit }
         if control, shift, matches("m") { return .minimizeWindow }
         if control, shift, matches("h") { return .hideApp }
-        if command, matches("r") { return .restart }
+        if command, matches("r") { return shift ? .restartWithModel : .restart }
         if command, !shift, matches("n") { return .newItem }
         if command, !shift, !option, !control, matches("e") { return .edit }
         if command, !shift, matches("d") { return .duplicate }
@@ -93,7 +95,7 @@ enum PaletteShortcut: Equatable {
         switch self {
         case .copyFile, .copyName, .copyPath, .copyText, .pasteFile, .quickLook, .openInApp,
             .showDetails, .toggleFavorite, .hideFromSearch, .quit, .forceQuit, .minimizeWindow,
-            .hideApp, .restart, .edit, .duplicate, .showInFinder:
+            .hideApp, .restart, .restartWithModel, .edit, .duplicate, .showInFinder:
             true
         case .commandDelete, .delete, .deleteAll, .pin, .favoriteSlot, .continueInChat, .newItem,
             .settings, .copyCalculation:
@@ -107,8 +109,8 @@ enum PaletteShortcut: Equatable {
             .quickLook, .openInApp, .showDetails, .toggleFavorite, .hideFromSearch, .minimizeWindow,
             .newItem, .settings, .edit, .duplicate, .showInFinder:
             true
-        case .commandDelete, .pasteFile, .quit, .forceQuit, .hideApp, .restart, .pin, .favoriteSlot,
-            .continueInChat:
+        case .commandDelete, .pasteFile, .quit, .forceQuit, .hideApp, .restart, .restartWithModel,
+            .pin, .favoriteSlot, .continueInChat:
             false
         }
     }

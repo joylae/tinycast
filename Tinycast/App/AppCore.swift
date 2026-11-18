@@ -670,13 +670,15 @@ final class AppCore {
     }
 
     /// Permissive guardrails: the text transformed is the reader's own, which `.default` refuses.
-    func quickActionProvider(for action: QuickAction, in session: UUID) async throws -> any AIProvider {
+    func quickActionProvider(
+        for action: QuickAction, in session: UUID, model override: AIModelSelection? = nil
+    ) async throws -> any AIProvider {
         quickActionSettings.repairModel(
             against: aiSettings.connections, fallback: aiSettings.defaultModel)
-        guard let selection = quickActionSettings.model(for: action) ?? aiSettings.defaultModel
+        guard let selection = override ?? quickActionSettings.model(for: action) ?? aiSettings.defaultModel
         else {
             throw AIProviderError.unavailable(
-                String(localized: "Choose a model in Settings \u{2192} Quick Actions."))
+                String(localized: "Choose a model in Settings \u{2192} AI Quick Actions."))
         }
         let supportsTools: Bool
         switch selection {

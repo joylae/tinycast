@@ -328,7 +328,7 @@ struct LauncherScreen: PaletteScreen {
         switch shortcut {
         case .hideFromSearch: return hideFromSearch(at: selection)
         case .quit, .forceQuit: return quit(at: selection, force: shortcut == .forceQuit)
-        case .restart: return restart(at: selection)
+        case .restart, .restartWithModel: return restart(at: selection)
         case .edit: return editItem(at: selection)
         case .copyPath: return copyQuicklink(at: selection)
         case .copyFile: return copyDeepLink(at: selection)

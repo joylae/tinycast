@@ -15,6 +15,11 @@ final class QuickActionCoordinator {
     private enum Target {
         case external(NSRunningApplication?)
         case note(NoteSelection)
+
+        var externalApp: NSRunningApplication? {
+            guard case .external(let app) = self else { return nil }
+            return app
+        }
     }
 
     private let settings: AppSettings
@@ -29,7 +34,11 @@ final class QuickActionCoordinator {
     private let aliases: AliasStore
     private let paletteCoordinator: PaletteCoordinator
     private let panels = QuickActionPanelController()
+    private(set) var chatSession: QuickActionChatSession?
+    private var chatTarget: Target?
     private unowned let core: AppCore
+    private var palette: PaletteState { core.palette }
+    var canContinueInChat: Bool { settings.aiEnabled }
 
     private static let launcherCommands = Set(BuiltInQuickAction.allCases.map(CommandID.init))
 
@@ -66,6 +75,7 @@ final class QuickActionCoordinator {
         applyCustomQuickActionsPresence()
         guard settings.quickActionsEnabled else {
             cancel()
+            discardChat()
             core.applyInstalledAILifecycle()
             return
         }
@@ -87,7 +97,7 @@ final class QuickActionCoordinator {
         Task {
             guard
                 await core.confirm(
-                    title: String(localized: "Enable Quick Actions?"),
+                    title: String(localized: "Enable AI Quick Actions?"),
                     message: String(
                         localized: """
                             Tinycast needs the Accessibility permission to read the text you have \
@@ -176,7 +186,9 @@ final class QuickActionCoordinator {
     }
 
     func run(_ action: QuickAction) {
-        guard settings.quickActionsEnabled, running == nil else { return }
+        guard settings.quickActionsEnabled else { return }
+        if chatSession != nil { discardChat() }
+        guard running == nil else { return }
         let source =
             paletteCoordinator.isVisible
             ? InjectionTarget.behindPalette(
@@ -236,8 +248,158 @@ final class QuickActionCoordinator {
         let state = QuickActionPanelState(
             action: action, original: selection, targetLanguage: targetLanguage)
         let previews = store.settings.previewsResult(action)
+        if previews, !action.usesTranslationFramework {
+            beginChat(state, target: target)
+            return
+        }
         if previews { present(state, target: target) }
         await perform(state, target: target, previewing: previews)
+    }
+
+    private func beginChat(_ state: QuickActionPanelState, target: Target) {
+        let chat = core.aiChats.makeEphemeralState()
+        let selection = store.model(for: state.action) ?? core.aiSettings.defaultModel
+        let session = QuickActionChatSession(
+            action: state.action, original: state.original,
+            instructions: QuickActionPrompt.instructions(
+                for: state.action, override: store.settings.instructionOverride(for: state.action)),
+            model: selection, chat: chat)
+        chatSession = session
+        chatTarget = target
+        palette.prepare(mode: .ai)
+        core.palette.query = ""
+        if let app = target.externalApp { core.palette.pasteTarget = PasteTarget(app: app) }
+        paletteCoordinator.showPalette(mode: .ai)
+        session.start { await self.generateInitial(session) }
+    }
+
+    private func generateInitial(_ session: QuickActionChatSession) async {
+        do {
+            let provider = try await core.quickActionProvider(
+                for: session.action, in: session.toolSessionID, model: session.model)
+            guard chatSession === session, !Task.isCancelled else { return }
+            let sent = session.chat.send(
+                session.original, using: provider, model: session.model,
+                instructions: session.instructions,
+                contextBudget: session.model?.isOnDevice == true
+                    ? AppleIntelligence.contextBudget : ChatSession.defaultTextBudget,
+                requestText: QuickActionPrompt.message(
+                    for: session.action, selection: session.original),
+                maxOutputTokens: session.outputBudget(using: provider))
+            if !sent { session.chat.report(String(localized: "The action is already running.")) }
+        } catch {
+            guard chatSession === session, !Task.isCancelled else { return }
+            session.chat.report(error.localizedDescription)
+        }
+    }
+
+    @discardableResult
+    func send(_ input: String) -> Bool {
+        guard let session = chatSession, !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            !session.isWorking
+        else { return false }
+        session.start { await self.send(input, in: session) }
+        return true
+    }
+
+    private func send(_ input: String, in session: QuickActionChatSession) async {
+        do {
+            let provider = try await core.quickActionProvider(
+                for: session.action, in: session.toolSessionID, model: session.model)
+            guard chatSession === session, !Task.isCancelled else { return }
+            session.chat.send(
+                input, using: provider, model: session.model,
+                instructions: session.instructions,
+                contextBudget: session.model?.isOnDevice == true
+                    ? AppleIntelligence.contextBudget : ChatSession.defaultTextBudget,
+                maxOutputTokens: session.outputBudget(using: provider))
+        } catch {
+            guard chatSession === session, !Task.isCancelled else { return }
+            session.chat.report(error.localizedDescription)
+        }
+    }
+
+    func stopChatResponse() { chatSession?.stop() }
+
+    func regenerateChat() {
+        guard let session = chatSession else { return }
+        session.start { await self.regenerate(session) }
+    }
+
+    private func regenerate(_ session: QuickActionChatSession) async {
+        do {
+            let provider = try await core.quickActionProvider(
+                for: session.action, in: session.toolSessionID, model: session.model)
+            guard chatSession === session, !Task.isCancelled else { return }
+            session.chat.regenerate(
+                using: provider, model: session.model,
+                instructions: session.instructions,
+                contextBudget: session.model?.isOnDevice == true
+                    ? AppleIntelligence.contextBudget : ChatSession.defaultTextBudget,
+                maxOutputTokens: session.outputBudget(using: provider))
+        } catch {
+            guard chatSession === session, !Task.isCancelled else { return }
+            session.chat.report(error.localizedDescription)
+        }
+    }
+
+    func continueChatInWindow() {
+        guard settings.aiEnabled, let session = chatSession,
+            !session.chat.session.messages.isEmpty
+        else { return }
+        let draft = core.palette.query
+        core.palette.query = ""
+        core.mcpCoordinator.endSession(session.toolSessionID)
+        chatSession = nil
+        chatTarget = nil
+        paletteCoordinator.hidePalette(restoreFocus: false)
+        core.aiChats.continueInWindow(session.chat, draft: draft)
+        core.aiChatCoordinator.showWindow()
+    }
+
+    func copyChatResult() {
+        guard let session = chatSession, let text = session.chat.lastCompletedResult else { return }
+        Paster.copyPlainText(text)
+    }
+
+    func showSettings() {
+        paletteCoordinator.hidePalette(restoreFocus: false)
+        core.settingsCoordinator.showSettings(tab: .quickActions)
+    }
+
+    func pasteChatResult() {
+        guard let session = chatSession, let target = chatTarget,
+            let text = session.chat.lastCompletedResult
+        else { return }
+        deliver(text, to: target, action: session.action)
+    }
+
+    func quickAIResultDelivered() {
+        core.quickAICoordinator.quickAIDidDeliver()
+    }
+
+    func deliverQuickAI(_ text: String, target: InjectionTarget) {
+        injector.deliver(
+            InjectedText(text), target: target, expectedKeyword: nil, keywordLength: 0,
+            automaticGeneration: nil, activateTarget: false,
+            onDelivered: { [weak self] in self?.quickAIResultDelivered() },
+            onFailed: { [weak self] in
+                Paster.copyPlainText(text)
+                self?.core.showMessage(
+                    String(localized: "Couldn't paste the answer — copied instead"), tone: .danger)
+            })
+    }
+
+    func discardChat() {
+        guard let session = chatSession else { return }
+        session.stop()
+        core.mcpCoordinator.endSession(session.toolSessionID)
+        chatSession = nil
+        chatTarget = nil
+    }
+
+    func paletteDidPopToRoot() {
+        discardChat()
     }
 
     /// A missing permission cannot be fixed from a pill that fades, so it earns a dialog instead.
@@ -250,7 +412,7 @@ final class QuickActionCoordinator {
         Task {
             guard
                 await core.reportFailure(
-                    title: String(localized: "Quick Actions can't read your selection"),
+                    title: String(localized: "AI Quick Actions can't read your selection"),
                     message: String(
                         localized: """
                             Tinycast needs the Accessibility permission to read the text you have \
@@ -322,6 +484,10 @@ final class QuickActionCoordinator {
     /// A replacement that never lands would otherwise lose the reply, so the clipboard keeps it.
     private func deliver(_ text: String, to target: Target, action: QuickAction) {
         let onDelivered: @MainActor @Sendable () -> Void = { [weak self] in
+            if self?.chatSession != nil {
+                self?.paletteCoordinator.hidePalette(restoreFocus: false)
+                self?.discardChat()
+            }
             self?.core.showMessage(String(localized: "\(action.title) applied"))
         }
         let onFailed: @MainActor @Sendable () -> Void = { [weak self] in
@@ -333,7 +499,14 @@ final class QuickActionCoordinator {
         switch target {
         case .external(let app):
             injector.replaceSelection(
-                with: text, in: app, onDelivered: onDelivered, onFailed: onFailed)
+                with: text, in: app, activateTarget: chatSession == nil,
+                isValid: { [weak self] in
+                    guard let expected = self?.chatSession?.original, let app,
+                        let current = AccessibilityText.selection(in: app)
+                    else { return self?.chatSession == nil }
+                    return current == expected
+                },
+                onDelivered: onDelivered, onFailed: onFailed)
         case .note(let note):
             guard core.notesCoordinator.editorInput == note.document,
                 note.editor.window?.isVisible == true,

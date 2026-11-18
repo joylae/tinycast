@@ -43,6 +43,7 @@ struct RootPaletteView: View {
     /// The pending scroll request; modes are exclusive, so one piece of state serves all.
     @State private var scroll = ScrollIntent(kind: .top)
     @State private var compactSelection = CompactBarSelection()
+    @State private var regenerateWithModel = false
 
     /// Compact vs. full; the source of truth is on `AppCore`, so the two can't disagree.
     private var isCollapsed: Bool { core.paletteCoordinator.paletteIsCollapsed }
@@ -117,10 +118,15 @@ struct RootPaletteView: View {
                 store: store, core: core, vm: vm, openActions: openActions,
                 scrollToFollow: { scroll = ScrollIntent(kind: .follow) })
         case .ai:
+            if let session = core.quickActionCoordinator.chatSession {
+                return QuickActionChatScreen(
+                    vm: vm, session: session, coordinator: core.quickActionCoordinator,
+                    openModel: openRegenerationModel)
+            }
             return AIScreen(
                 vm: vm, metrics: metrics, chat: quickAI,
                 coordinator: core.quickAICoordinator, chatCoordinator: core.aiChatCoordinator,
-                openAttachments: toggleAIAttachments)
+                openAttachments: toggleAIAttachments, openModel: openRegenerationModel)
         case .aiHistory:
             return ChatHistoryScreen(
                 history: core.chatHistory, chat: quickAI, coordinator: core.quickAICoordinator,
@@ -278,18 +284,29 @@ struct RootPaletteView: View {
             return headerMenu(dictionaryScopeContent, width: metrics.size.fileSearchFilterMenuWidth)
         case .aiModel:
             return headerMenu(
-                AIModelMenu.models(coordinator: core.aiChatCoordinator, chat: quickAI),
+                AIModelMenu.models(
+                    coordinator: core.aiChatCoordinator, chat: activeAIChat,
+                    onSelect: regenerateWithModel ? { option in
+                        regenerateWithModel = false
+                        core.aiChatCoordinator.selectModel(option, in: activeAIChat)
+                        if let session = core.quickActionCoordinator.chatSession {
+                            if let model = activeAIChat.session.model { session.selectModel(model) }
+                            core.quickActionCoordinator.regenerateChat()
+                        } else {
+                            core.quickAICoordinator.regenerate()
+                        }
+                    } : nil),
                 width: metrics.size.menuWidth)
         case .aiReasoning:
             return headerMenu(
                 AIModelMenu.reasoning(
-                    coordinator: core.aiChatCoordinator, chat: quickAI),
+                    coordinator: core.aiChatCoordinator, chat: activeAIChat),
                 width: metrics.size.menuWidth)
         case .aiAttachments:
             guard !quickAI.pendingAttachments.isEmpty else { return nil }
             return headerMenu(
                 AIModelMenu.attachments(
-                    coordinator: core.aiChatCoordinator, chat: quickAI),
+                    coordinator: core.aiChatCoordinator, chat: activeAIChat),
                 width: metrics.size.menuWidth)
         case .argumentOptions:
             guard let field = argumentOptionsField,
@@ -847,14 +864,14 @@ struct RootPaletteView: View {
             if !isCollapsed, vm.mode == .ai {
                 headerGutter(width: metrics.spacing.md)
                 AIModelButton(
-                    title: core.aiChatCoordinator.selectedModelTitle(for: quickAI),
-                    icon: core.aiChatCoordinator.selectedModelIcon(for: quickAI),
+                    title: core.aiChatCoordinator.selectedModelTitle(for: activeAIChat),
+                    icon: core.aiChatCoordinator.selectedModelIcon(for: activeAIChat),
                     isOpen: openMenu == .aiModel,
                     action: toggleAIModel)
-                if !core.aiChatCoordinator.reasoningEfforts(for: quickAI).isEmpty {
+                if !core.aiChatCoordinator.reasoningEfforts(for: activeAIChat).isEmpty {
                     headerGutter(width: metrics.spacing.md)
                     AIReasoningButton(
-                        title: core.aiChatCoordinator.selectedReasoningTitle(for: quickAI),
+                        title: core.aiChatCoordinator.selectedReasoningTitle(for: activeAIChat),
                         isOpen: openMenu == .aiReasoning,
                         action: toggleAIReasoning)
                 }
@@ -1159,6 +1176,7 @@ struct RootPaletteView: View {
 
     private func toggleAIModel() {
         if openMenu == .aiModel {
+            regenerateWithModel = false
             closeMenus()
             return
         }
@@ -1174,8 +1192,17 @@ struct RootPaletteView: View {
 
     private var quickAI: AIChatState { core.aiChats.quickAI }
 
+    private func openRegenerationModel() {
+        regenerateWithModel = true
+        if openMenu != .aiModel { toggleAIModel() }
+    }
+
+    private var activeAIChat: AIChatState {
+        core.quickActionCoordinator.chatSession?.chat ?? quickAI
+    }
+
     private var aiModelHighlight: Int {
-        AIModelMenu.modelHighlight(coordinator: core.aiChatCoordinator, chat: quickAI)
+        AIModelMenu.modelHighlight(coordinator: core.aiChatCoordinator, chat: activeAIChat)
     }
 
     private func toggleAIAttachments() {
@@ -1194,7 +1221,7 @@ struct RootPaletteView: View {
         open(
             .aiReasoning,
             highlighting: AIModelMenu.reasoningHighlight(
-                coordinator: core.aiChatCoordinator, chat: quickAI))
+                coordinator: core.aiChatCoordinator, chat: activeAIChat))
     }
 
     /// Every header menu states its own width, so resizing one never moves another.
@@ -1219,6 +1246,7 @@ struct RootPaletteView: View {
     }
 
     private func closeMenus() {
+        regenerateWithModel = false
         menuPanel.hide()
         if menuOpen { searchFocused = !screen.hidesSearchField }
         openMenu = nil

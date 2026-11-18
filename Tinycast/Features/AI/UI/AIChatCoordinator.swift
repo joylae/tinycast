@@ -418,7 +418,7 @@ final class AIChatCoordinator {
     }
 
     func copyLastResponse(in chat: AIChatState) {
-        guard let text = chat.lastAssistantText else { return }
+        guard let text = chat.lastCompletedResult else { return }
         Paster.copyPlainText(text)
     }
 
@@ -693,7 +693,7 @@ final class AIChatCoordinator {
             option.selection, settings: core.aiSettings,
             subscription: core.chatGPTSubscription, installedAI: core.installedAI)
         chat.setModel(selection)
-        core.aiSettings.select(selection)
+        if chat === chats.window { core.aiSettings.select(selection) }
     }
 
     func reasoningEfforts(for chat: AIChatState) -> [ChatGPTSubscription.Effort] {
@@ -712,7 +712,7 @@ final class AIChatCoordinator {
     func selectReasoningEffort(_ effort: ChatGPTSubscription.Effort, in chat: AIChatState) {
         guard let selection = model(for: chat)?.withEffort(effort.id) else { return }
         chat.setModel(selection)
-        core.aiSettings.select(selection)
+        if chat === chats.window { core.aiSettings.select(selection) }
     }
 
     @discardableResult

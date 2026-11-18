@@ -67,6 +67,7 @@ final class PaletteWindowController {
     var preserved = false
     var previousApp: NSRunningApplication? { nil }
     var previousOwnWindow: NSWindow? { nil }
+    var previousTarget: InjectionTarget? { nil }
     var visibleFrame: CGRect? { nil }
     var anchorView: NSView? { nil }
 
@@ -86,6 +87,8 @@ final class PaletteWindowController {
     func beginDrag() {}
     func endDrag() {}
 }
+
+enum InjectionTarget {}
 
 @MainActor
 final class AppSettings { var compactMode = false }

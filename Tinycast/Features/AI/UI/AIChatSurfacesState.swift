@@ -33,6 +33,21 @@ final class AIChatSurfacesState {
         return state
     }
 
+    func makeEphemeralState() -> AIChatState {
+        AIChatState(
+            history: history, persistsHistory: false, clearsTextOnToolCall: true)
+    }
+
+    @discardableResult
+    func continueInWindow(_ next: AIChatState, draft: String = "") -> Bool {
+        guard !next.session.messages.isEmpty else { return false }
+        next.onReplyFinished = onReplyFinished
+        next.persistHistoryFromNowOn()
+        show(next)
+        if !draft.isEmpty { next.draft = draft }
+        return true
+    }
+
     /// Conversations with a reply still arriving, wherever they are shown.
     var answeringIDs: Set<UUID> {
         Set(live.filter(\.isStreaming).map(\.session.id))
