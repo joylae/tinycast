@@ -102,8 +102,8 @@ jobs:
           BUILD_NUMBER: ${{ github.run_number }}
           PRERELEASE: ${{ inputs.prerelease }}
         run: |
-          BUNDLE_ID="com.conversun.tinycast-cn"
-          if [ "$PRERELEASE" = "true" ]; then BUNDLE_ID="${BUNDLE_ID}.beta"; fi
+          BUNDLE_ID="com.abueammar.tinycast"
+          if [ "$PRERELEASE" = "true" ]; then BUNDLE_ID="com.abueammar.tinycast.beta"; fi
           xcodebuild -project Tinycast.xcodeproj -scheme Tinycast -configuration Release \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO \

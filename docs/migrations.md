@@ -38,12 +38,13 @@ When the check fails, delete everything the row lists, then the row. Then run `x
 | Migration | Repairs | Delete with it |
 | --- | --- | --- |
 | `CustomQuickActionPromptMigration` | Expands legacy custom-action `instructions` into the full `systemPrompt` at decode time, preserving the previously implicit text-transformation boundary. Kept until **2027-05-17** for users who skip releases | `Tinycast/Migrations/CustomQuickActionPromptMigration.swift`, its decode call in `CustomQuickActionStore.load()`, `Tests/CustomQuickActionPromptMigrationTests.swift`, both source references and the harness entry in `Scripts/run-tests.sh`, and its row in [testing.md](testing.md) |
-| `BundleIdentifierMigration` | Moves `com.tinycast.app[.beta\|.dev]`'s preferences, Application Support and Caches folders and login item to `com.abueammar.tinycast[.beta\|.dev]`, and repoints every saved path into the old folders: in preferences (JSON-encoded ones too), JSON files, clipboard and quicklink rows, and `settings.json`. A `paths-repointed` marker in its backup makes it repair, once, a copy 0.12.14-beta.141 moved without repointing. Keychain secrets stay behind: moving them asks once per item, so users enter them again. Kept until **2027-05-13** | Everything in [Removing the bundle id move](#removing-the-bundle-id-move) |
+| `BundleIdentifierMigration` | Moves `com.tinycast.app[.beta\|.dev]` and `com.conversun.tinycast-cn[.beta]` preferences, Application Support, Caches and login items to the matching `com.abueammar.tinycast[.beta\|.dev]`, and repoints every saved path into the old folders: in preferences (JSON-encoded ones too), JSON files, clipboard and quicklink rows, and `settings.json`. A `paths-repointed` marker in its backup makes it repair, once, a copy 0.12.14-beta.141 moved without repointing. API and MCP Keychain items are copied only into an empty destination service and left in place for recovery. Kept until **2027-05-13** | Everything in [Removing the bundle id move](#removing-the-bundle-id-move) |
 
 ### Removing the bundle id move
 
 The migration and the handoff release are one piece, and go together. Afterwards, searching the repo
-for `Handoff`, `LEGACY`, `BundleIdentifierMigration` and `com.tinycast.app` finds nothing.
+for `Handoff`, `LEGACY`, `BundleIdentifierMigration`, `com.tinycast.app` and
+`com.conversun.tinycast-cn` finds nothing.
 
 **Delete these files**
 

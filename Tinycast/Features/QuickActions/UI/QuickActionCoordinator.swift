@@ -264,6 +264,10 @@ final class QuickActionCoordinator {
             instructions: QuickActionPrompt.instructions(
                 for: state.action, override: store.settings.instructionOverride(for: state.action)),
             model: selection, chat: chat)
+        chat.onReplyFinished = { [weak self] chat in
+            guard let self, chatSession?.chat === chat, !paletteCoordinator.isVisible else { return }
+            core.showMessage(String(localized: "Quick AI response ready"))
+        }
         chatSession = session
         chatTarget = target
         palette.prepare(mode: .ai)

@@ -62,7 +62,9 @@ xattr -dr com.apple.quarantine "/Applications/Tinycast.app"
 
 后续更新通过应用内更新器从 `joylae/tinycast` 获取。本仓库不维护 Homebrew cask。
 来自其他仓库或不同签名证书的安装不能通过应用内更新直接切换，需先手动安装本仓库 DMG。
-这会替换同路径的 `Tinycast.app`；应用标识沿用 CN 版，现有设置与数据继续使用。
+这会替换同路径的 `Tinycast.app`。应用标识和存储目录与最上游正式版一致，首次启动会迁移
+原 CN 版的偏好设置、Application Support 和 Caches；空目标服务会复制原 Keychain 密钥，
+已有目标服务保留原值。
 
 ## Permissions
 

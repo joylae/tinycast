@@ -139,6 +139,12 @@ feature's doc, under its own `## Invariants`.
   newly persisted must stay keyed by `Bundle.main.bundleIdentifier`.
 - **XcodeGen owns the project.** `Tinycast.xcodeproj` is committed but generated from `project.yml`;
   after editing it, run `xcodegen generate` and commit both. No SwiftPM, and never `Bundle.module`.
+- **Local CN Release packaging takes its version from the latest CN release tag.** `MARKETING_VERSION`
+  in `project.yml` is only a fallback; resolve the latest `v*-cn.N` tag from
+  `joylae/tinycast` (or `conversun/tinycast-cn` when this fork has none), remove its leading `v`, and
+  pass it as `./Scripts/build-dmg.sh <version>`. If neither source resolves, read the installed app's
+  `CFBundleShortVersionString` and use that; require an explicit version only when both fail. Never
+  package an install as the fallback `0.1.0`.
 
 ## Before you finish
 

@@ -26,15 +26,33 @@ struct BundleIdentifierMigrationTests {
         try repointsEverySpellingOfTheOldFolders()
         try repairsAnEarlierMove()
         leavesAFreshInstallAlone()
+        movesStoredSecretsWithoutOverwriting()
 
         print("\(passes) passed, \(failures) failed")
         exit(failures == 0 ? 0 : 1)
     }
 
+    static func movesStoredSecretsWithoutOverwriting() {
+        var stored: [String: [String: Data]] = [
+            "legacy.ai-api-keys": ["ai": Data("AI key".utf8)],
+            "legacy.ai-request-headers": ["headers": Data("Headers".utf8)],
+            "legacy.mcp-secrets": ["mcp": Data("MCP".utf8)],
+            "current.ai-api-keys": ["existing": Data("Existing".utf8)],
+        ]
+        let store = BundleIdentifierMigration.Keychain(
+            read: { stored[$0] }, write: { stored[$1] = $0 })
+        BundleIdentifierMigration.migrateSecrets(
+            from: "legacy", to: "current", using: store)
+        check("existing secrets remain", stored["current.ai-api-keys"]?["existing"] == Data("Existing".utf8))
+        check("request headers follow too", stored["current.ai-request-headers"]?["headers"] == Data("Headers".utf8))
+        check("MCP secrets follow too", stored["current.mcp-secrets"]?["mcp"] == Data("MCP".utf8))
+        check("legacy items stay put for recovery", stored["legacy.ai-api-keys"]?["ai"] == Data("AI key".utf8))
+    }
+
     static func mapsIdentifiers() {
         let mapping = [
-            ("com.abueammar.tinycast", "com.tinycast.app"),
-            ("com.abueammar.tinycast.beta", "com.tinycast.app.beta"),
+            ("com.abueammar.tinycast", "com.conversun.tinycast-cn"),
+            ("com.abueammar.tinycast.beta", "com.conversun.tinycast-cn.beta"),
             ("com.abueammar.tinycast.dev", "com.tinycast.app.dev")
         ]
         for (current, legacy) in mapping {
@@ -47,8 +65,10 @@ struct BundleIdentifierMigrationTests {
             BundleIdentifierMigration.legacyIdentifier(of: "org.example.cast") == nil)
         for identifier in ["com.conversun.tinycast-cn", "com.conversun.tinycast-cn.beta"] {
             check(
-                "\(identifier) leaves upstream data alone",
-                BundleIdentifierMigration.legacyIdentifier(of: identifier) == nil)
+                "\(identifier) maps to the unified channel",
+                BundleIdentifierMigration.legacyIdentifier(
+                    of: identifier == "com.conversun.tinycast-cn"
+                        ? "com.abueammar.tinycast" : "com.abueammar.tinycast.beta") == identifier)
         }
         check(
             "a lookalike prefix is not a channel",

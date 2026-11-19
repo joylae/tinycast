@@ -1,8 +1,9 @@
 import Foundation
+import Security
 import SQLite3
 import os
 
-/// Carries what a `com.tinycast.app` channel left behind over to this build's bundle id.
+/// Carries legacy-channel preferences, support files and caches into the current bundle id.
 enum BundleIdentifierMigration {
     /// The handoff writes it under the old id, so it arrives here with the old preferences.
     static let launchAtLoginKey = "BundleIdentifierHandoff.launchAtLogin"
@@ -18,6 +19,67 @@ enum BundleIdentifierMigration {
                 read: UserDefaults.standard.persistentDomain(forName:),
                 write: UserDefaults.standard.setPersistentDomain(_:forName:),
                 remove: UserDefaults.standard.removePersistentDomain(forName:))
+        }
+    }
+
+    struct Keychain {
+        var read: (String) -> [String: Data]?
+        var write: ([String: Data], String) -> Void
+
+        static var standard: Keychain {
+            Keychain(
+                read: { service in
+                    var result: CFTypeRef?
+                    let status = SecItemCopyMatching(
+                        [
+                            kSecClass as String: kSecClassGenericPassword,
+                            kSecAttrService as String: service,
+                            kSecReturnAttributes as String: true,
+                            kSecMatchLimit as String: kSecMatchLimitAll,
+                        ] as CFDictionary, &result)
+                    guard status == errSecSuccess,
+                        let items = result as? [[String: Any]]
+                    else { return nil }
+                    var values: [String: Data] = [:]
+                    for item in items {
+                        guard let account = item[kSecAttrAccount as String] as? String else { continue }
+                        var data: CFTypeRef?
+                        let query: [String: Any] = [
+                            kSecClass as String: kSecClassGenericPassword,
+                            kSecAttrService as String: service,
+                            kSecAttrAccount as String: account,
+                            kSecReturnData as String: true,
+                            kSecMatchLimit as String: kSecMatchLimitOne,
+                        ]
+                        guard SecItemCopyMatching(query as CFDictionary, &data) == errSecSuccess,
+                            let secret = data as? Data
+                        else { continue }
+                        values[account] = secret
+                    }
+                    return values
+                },
+                write: { values, service in
+                    for (account, data) in values {
+                        let query: [String: Any] = [
+                            kSecClass as String: kSecClassGenericPassword,
+                            kSecAttrService as String: service,
+                            kSecAttrAccount as String: account,
+                        ]
+                        var attributes = query
+                        attributes[kSecValueData as String] = data
+                        SecItemAdd(attributes as CFDictionary, nil)
+                    }
+                })
+        }
+    }
+
+    static func migrateSecrets(from legacy: String, to current: String, using keychain: Keychain) {
+        for scope in ["ai-api-keys", "ai-request-headers", "mcp-secrets", "installed-ai-environment"] {
+            let source = "\(legacy).\(scope)"
+            let destination = "\(current).\(scope)"
+            if let secrets = keychain.read(source), keychain.read(destination) == nil {
+                keychain.write(secrets, destination)
+            }
         }
     }
 
@@ -71,6 +133,7 @@ enum BundleIdentifierMigration {
 
     private static let currentPrefix = "com.abueammar.tinycast"
     private static let legacyPrefix = "com.tinycast.app"
+    private static let cnStable = "com.conversun.tinycast-cn"
     private static let backupLifetime: TimeInterval = 30 * 24 * 60 * 60
     private static let logger = Logger(subsystem: "com.tinycast", category: "Migration")
 
@@ -82,10 +145,19 @@ enum BundleIdentifierMigration {
             from: legacy, to: bundleID, library: library,
             settingsFile: AppPaths.settingsFile(bundleID: bundleID), preferences: .standard, now: Date())
         if launchesAtLogin { LaunchAtLogin.set(true) }
+        if legacy.hasPrefix(cnStable) {
+            migrateSecrets(from: legacy, to: bundleID, using: .standard)
+            if LaunchAtLogin.isEnabled(bundleIdentifier: legacy) {
+                LaunchAtLogin.set(true)
+                LaunchAtLogin.set(false, bundleIdentifier: legacy)
+            }
+        }
     }
 
     static func legacyIdentifier(of bundleID: String) -> String? {
         guard bundleID == currentPrefix || bundleID.hasPrefix(currentPrefix + ".") else { return nil }
+        if bundleID == currentPrefix { return cnStable }
+        if bundleID == currentPrefix + ".beta" { return cnStable + ".beta" }
         return legacyPrefix + bundleID.dropFirst(currentPrefix.count)
     }
 

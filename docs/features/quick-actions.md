@@ -34,6 +34,8 @@ The session is ephemeral: nothing is written to chat history until ⌘J explicit
 AI Chat, which carries the transcript, model and preset but not the original replacement target.
 Hiding the palette preserves the session within the normal Pop to Root Search window; timing out,
 starting another action or delivering successfully discards it.
+A reply that finishes while the palette is hidden reports its completion through the same message
+HUD as Quick AI. Discarding the session or continuing it in AI Chat suppresses that HUD.
 
 An empty composer pastes on ↵, text changes the pill to Send, and an in-flight turn offers Stop.
 ⌘↵ copies the latest completed assistant reply's Markdown without changing the panel or draft.

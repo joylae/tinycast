@@ -102,8 +102,8 @@ struct UpdatesTests {
     // MARK: - ReleaseChannel
 
     static func derivesChannels() {
-        let stable = ReleaseChannel(bundleID: "com.conversun.tinycast-cn")
-        let beta = ReleaseChannel(bundleID: "com.conversun.tinycast-cn.beta")
+        let stable = ReleaseChannel(bundleID: "com.abueammar.tinycast")
+        let beta = ReleaseChannel(bundleID: "com.abueammar.tinycast.beta")
         let dev = ReleaseChannel(bundleID: "com.abueammar.tinycast.dev")
 
         expect(stable == .stable, "the stable bundle id is the stable channel")
@@ -114,9 +114,9 @@ struct UpdatesTests {
             ReleaseChannel(bundleID: "com.tinycast.app") == .development,
             "the bundle id from before the move is no channel of this build")
 
-        for identifier in ["com.abueammar.tinycast", "com.abueammar.tinycast.beta"] {
+        for identifier in ["com.conversun.tinycast-cn", "com.conversun.tinycast-cn.beta"] {
             expect(ReleaseChannel(bundleID: identifier) == .development,
-                "an upstream bundle never consumes the Chinese feed")
+                "a retired CN bundle never checks for another update")
         }
         expect(ReleaseFeed.repository == "joylae/tinycast", "the feed belongs to this fork")
 

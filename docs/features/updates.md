@@ -76,12 +76,13 @@ the header row. It cannot reuse `ExtensionToastPill`, because extension views st
 
 | Bundle id | Channel | Takes |
 | --- | --- | --- |
-| `com.conversun.tinycast-cn` | `.stable` | CN releases |
-| `com.conversun.tinycast-cn.beta` | `.beta` | CN prereleases |
+| `com.abueammar.tinycast` | `.stable` | CN releases |
+| `com.abueammar.tinycast.beta` | `.beta` | CN prereleases |
 | anything else | `.development` | nothing |
 
-CN bundle identifiers stay unchanged. Upstream's bundle-id migration and `-Handoff` archives do not
-apply to the CN channel; its updater continues to accept only its own bundle identifier and feed.
+CN releases use the upstream bundle identifiers and storage paths. Retired CN identifiers are local
+development channels and never fetch another update; the installed app migrates their data into the
+upstream directories on launch.
 
 `AppVersion` parses the upstream triple and optional `-beta.N`, followed by optional `-cn.N`.
 The feed requires the CN suffix: plain upstream tags are not offered. The upstream triple and
@@ -91,7 +92,7 @@ beta precedence are compared first, then the CN revision numerically. Thus `0.11
 
 Versions through `0.11.19-cn.1` lack the CN updater. They must install this repository's DMG once.
 Switching from another signer also requires a manual install.
-Debug and upstream bundle ids are development channels and never consume the CN feed.
+Debug is a development channel and never consumes the CN feed.
 
 The Intel build is _not_ a channel. It shares the stable tag, version, bundle id and signature, so it
 resolves to `.stable` like any other; `ReleaseArchitecture` picks its asset, and nothing about

@@ -81,11 +81,14 @@ Use the Apple silicon runner even though it also builds Intel slices. The `macos
 hosted image can hang in IconServices while rasterizing system icons; its tests must not be skipped.
 
 Versions remain `<triple>-cn.N` or `<triple>-beta.N-cn.N`. The final `cn.N` is a fork revision,
-not a prerelease indicator. Stable builds use `prerelease=false` and `com.conversun.tinycast-cn`;
-beta builds use `prerelease=true` and `com.conversun.tinycast-cn.beta`. These identifiers preserve
-CN settings and data. The updater checks only `joylae/tinycast` and requires the running copy's
-exact signing certificate, so switching from the CN upstream or renewing the certificate needs
-one manual installation of this repository's DMG.
+not a prerelease indicator. Stable builds use `prerelease=false` and `com.abueammar.tinycast`;
+beta builds use `prerelease=true` and `com.abueammar.tinycast.beta`, the same channels and storage
+directories as upstream. Launch migrates legacy CN preferences, Application Support and Caches
+into these bundle-id directories without overwriting files already present. API and MCP Keychain
+items are copied only when the corresponding new service is empty; old items remain for recovery.
+The updater checks only `joylae/tinycast` and requires the running copy's exact signing certificate,
+so switching from the CN upstream or renewing the certificate needs one manual installation of this
+repository's DMG.
 
 The release body contains a supplied Chinese changelog, a link to the CN upstream release and
 GitHub-generated merge records, followed by `<!-- tinycast:install -->` and manual installation

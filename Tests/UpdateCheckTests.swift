@@ -221,7 +221,7 @@ struct UpdateCheckTests {
         file: URL, fixture: FetchFixture, runningVersion: AppVersion? = AppVersion("1.0.0-cn.1")
     ) -> UpdateCheckStore {
         UpdateCheckStore(
-            channel: ReleaseChannel(bundleID: "com.conversun.tinycast-cn"),
+            channel: ReleaseChannel(bundleID: "com.abueammar.tinycast"),
             runningVersion: runningVersion, fileURL: file,
             fetch: { await fixture.fetch() })
     }
