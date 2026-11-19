@@ -30,7 +30,12 @@ final class AIChatCoordinator {
             title: String(localized: "AI Chat"), contentSize: Theme.Size.aiChatWindow,
             minimumSize: Theme.Size.aiChatWindowMinimum, resizable: true,
             autosaveName: "AIChatWindow", activation: core.activationPolicy, closesOnEscape: true)
-        chats.onReplyFinished = { [weak self] chat in self?.nameIfNeeded(chat) }
+        chats.onReplyFinished = { [weak self] chat in
+            guard let self else { return }
+            nameIfNeeded(chat)
+            guard chat === chats.quickAI, !paletteCoordinator.isVisible else { return }
+            core.showMessage(String(localized: "Quick AI response ready"))
+        }
     }
 
     func applyEnabled() {

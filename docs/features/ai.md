@@ -10,6 +10,8 @@ Chat has two surfaces over one history, as Raycast's does. **Quick AI** is the p
 from the launcher asks what you typed, and the answer appears in place. **AI Chat** is a window —
 saved conversations in a sidebar on the left, the open one on the right, and a composer at the
 bottom with the model picker. ⌘J hands a Quick AI conversation to the window.
+A Quick AI reply that finishes after the palette closes reports its completion through the message
+HUD; failures, cancellations and replies in the AI Chat window do not.
 
 ## Invariants
 
