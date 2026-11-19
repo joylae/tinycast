@@ -81,8 +81,8 @@ the header row. It cannot reuse `ExtensionToastPill`, because extension views st
 | anything else | `.development` | nothing |
 
 CN releases use the upstream bundle identifiers and storage paths. Retired CN identifiers are local
-development channels and never fetch another update; the installed app migrates their data into the
-upstream directories on launch.
+development channels and never fetch another update; a copy under one installs this repository's
+DMG once, because the updater installs only a bundle whose id matches the running copy.
 
 `AppVersion` parses the upstream triple and optional `-beta.N`, followed by optional `-cn.N`.
 The feed requires the CN suffix: plain upstream tags are not offered. The upstream triple and
