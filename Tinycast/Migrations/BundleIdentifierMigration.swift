@@ -7,6 +7,7 @@ import os
 enum BundleIdentifierMigration {
     /// The handoff writes it under the old id, so it arrives here with the old preferences.
     static let launchAtLoginKey = "BundleIdentifierHandoff.launchAtLogin"
+    static let secretsMigratedKey = "BundleIdentifierMigration.secretsMigrated"
 
     /// The named preference domains; a harness passes its own, since macOS never forgets a real one.
     struct Preferences {
@@ -23,8 +24,8 @@ enum BundleIdentifierMigration {
     }
 
     struct Keychain {
-        var read: (String) -> [String: Data]?
-        var write: ([String: Data], String) -> Void
+        var read: (String) -> (values: [String: Data]?, succeeded: Bool)
+        var write: ([String: Data], String) -> Bool
 
         static var standard: Keychain {
             Keychain(
@@ -37,9 +38,10 @@ enum BundleIdentifierMigration {
                             kSecReturnAttributes as String: true,
                             kSecMatchLimit as String: kSecMatchLimitAll,
                         ] as CFDictionary, &result)
+                    if status == errSecItemNotFound { return (nil, true) }
                     guard status == errSecSuccess,
                         let items = result as? [[String: Any]]
-                    else { return nil }
+                    else { return (nil, false) }
                     var values: [String: Data] = [:]
                     for item in items {
                         guard let account = item[kSecAttrAccount as String] as? String else { continue }
@@ -53,10 +55,10 @@ enum BundleIdentifierMigration {
                         ]
                         guard SecItemCopyMatching(query as CFDictionary, &data) == errSecSuccess,
                             let secret = data as? Data
-                        else { continue }
+                        else { return (nil, false) }
                         values[account] = secret
                     }
-                    return values
+                    return (values, true)
                 },
                 write: { values, service in
                     for (account, data) in values {
@@ -67,20 +69,32 @@ enum BundleIdentifierMigration {
                         ]
                         var attributes = query
                         attributes[kSecValueData as String] = data
-                        SecItemAdd(attributes as CFDictionary, nil)
+                        let status = SecItemAdd(attributes as CFDictionary, nil)
+                        guard status == errSecSuccess || status == errSecDuplicateItem else { return false }
                     }
+                    return true
                 })
         }
     }
 
-    static func migrateSecrets(from legacy: String, to current: String, using keychain: Keychain) {
+    static func migrateSecrets(
+        from legacy: String, to current: String, using keychain: Keychain,
+        preferences: Preferences
+    ) {
+        var domain = preferences.read(current) ?? [:]
+        guard domain[secretsMigratedKey] as? Bool != true else { return }
         for scope in ["ai-api-keys", "ai-request-headers", "mcp-secrets", "installed-ai-environment"] {
             let source = "\(legacy).\(scope)"
             let destination = "\(current).\(scope)"
-            if let secrets = keychain.read(source), keychain.read(destination) == nil {
-                keychain.write(secrets, destination)
-            }
+            let existing = keychain.read(destination)
+            guard existing.succeeded else { return }
+            if existing.values != nil { continue }
+            let secrets = keychain.read(source)
+            guard secrets.succeeded else { return }
+            if let values = secrets.values, !keychain.write(values, destination) { return }
         }
+        domain[secretsMigratedKey] = true
+        preferences.write(domain, current)
     }
 
     /// A path through an old folder however it is spelled: absolute, `~/`, `$HOME`, escaped or a URL.
@@ -146,7 +160,7 @@ enum BundleIdentifierMigration {
             settingsFile: AppPaths.settingsFile(bundleID: bundleID), preferences: .standard, now: Date())
         if launchesAtLogin { LaunchAtLogin.set(true) }
         if legacy.hasPrefix(cnStable) {
-            migrateSecrets(from: legacy, to: bundleID, using: .standard)
+            migrateSecrets(from: legacy, to: bundleID, using: .standard, preferences: .standard)
             if LaunchAtLogin.isEnabled(bundleIdentifier: legacy) {
                 LaunchAtLogin.set(true)
                 LaunchAtLogin.set(false, bundleIdentifier: legacy)

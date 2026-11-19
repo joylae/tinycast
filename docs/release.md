@@ -86,6 +86,7 @@ beta builds use `prerelease=true` and `com.abueammar.tinycast.beta`, the same ch
 directories as upstream. Launch migrates legacy CN preferences, Application Support and Caches
 into these bundle-id directories without overwriting files already present. API and MCP Keychain
 items are copied only when the corresponding new service is empty; old items remain for recovery.
+After one complete pass, a preference marker keeps later launches from reading the old services.
 The updater checks only `joylae/tinycast` and requires the running copy's exact signing certificate,
 so switching from the CN upstream or renewing the certificate needs one manual installation of this
 repository's DMG.

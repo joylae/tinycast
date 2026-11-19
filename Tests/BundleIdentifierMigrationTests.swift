@@ -27,6 +27,7 @@ struct BundleIdentifierMigrationTests {
         try repairsAnEarlierMove()
         leavesAFreshInstallAlone()
         movesStoredSecretsWithoutOverwriting()
+        retriesAnInterruptedSecretMigration()
 
         print("\(passes) passed, \(failures) failed")
         exit(failures == 0 ? 0 : 1)
@@ -39,14 +40,57 @@ struct BundleIdentifierMigrationTests {
             "legacy.mcp-secrets": ["mcp": Data("MCP".utf8)],
             "current.ai-api-keys": ["existing": Data("Existing".utf8)],
         ]
+        var reads: [String] = []
         let store = BundleIdentifierMigration.Keychain(
-            read: { stored[$0] }, write: { stored[$1] = $0 })
+            read: { service in
+                reads.append(service)
+                return (stored[service], true)
+            },
+            write: { values, service in
+                stored[service] = values
+                return true
+            })
+        let domains = Domains()
         BundleIdentifierMigration.migrateSecrets(
-            from: "legacy", to: "current", using: store)
+            from: "legacy", to: "current", using: store, preferences: domains.preferences)
         check("existing secrets remain", stored["current.ai-api-keys"]?["existing"] == Data("Existing".utf8))
+        check("an existing destination leaves its legacy service unread", !reads.contains("legacy.ai-api-keys"))
         check("request headers follow too", stored["current.ai-request-headers"]?["headers"] == Data("Headers".utf8))
         check("MCP secrets follow too", stored["current.mcp-secrets"]?["mcp"] == Data("MCP".utf8))
         check("legacy items stay put for recovery", stored["legacy.ai-api-keys"]?["ai"] == Data("AI key".utf8))
+        let completedReads = reads.count
+        BundleIdentifierMigration.migrateSecrets(
+            from: "legacy", to: "current", using: store, preferences: domains.preferences)
+        check("a completed migration never reads Keychain again", reads.count == completedReads)
+    }
+
+    static func retriesAnInterruptedSecretMigration() {
+        var stored: [String: [String: Data]] = [
+            "legacy.ai-request-headers": ["headers": Data("Headers".utf8)]
+        ]
+        var permitsRead = false
+        let store = BundleIdentifierMigration.Keychain(
+            read: { service in
+                if service == "legacy.ai-request-headers", !permitsRead { return (nil, false) }
+                return (stored[service], true)
+            },
+            write: { values, service in
+                stored[service] = values
+                return true
+            })
+        let domains = Domains()
+        BundleIdentifierMigration.migrateSecrets(
+            from: "legacy", to: "current", using: store, preferences: domains.preferences)
+        check(
+            "an interrupted migration is not complete",
+            domains.values["current"]?[BundleIdentifierMigration.secretsMigratedKey] == nil)
+        permitsRead = true
+        BundleIdentifierMigration.migrateSecrets(
+            from: "legacy", to: "current", using: store, preferences: domains.preferences)
+        check("the next launch finishes the copy", stored["current.ai-request-headers"]?["headers"] == Data("Headers".utf8))
+        check(
+            "only a completed migration is marked",
+            domains.values["current"]?[BundleIdentifierMigration.secretsMigratedKey] as? Bool == true)
     }
 
     static func mapsIdentifiers() {
