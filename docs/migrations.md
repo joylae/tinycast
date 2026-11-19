@@ -42,48 +42,25 @@ When the check fails, delete everything the row lists, then the row. Then run `x
 
 ### Removing the bundle id move
 
-The migration and the handoff release are one piece, and go together. Afterwards, searching the repo
-for `Handoff`, `LEGACY`, `BundleIdentifierMigration`, `com.tinycast.app` and
+Afterwards, searching the repo for `BundleIdentifierMigration`, `com.tinycast.app` and
 `com.conversun.tinycast-cn` finds nothing.
 
 **Delete these files**
 
 - `Tinycast/Migrations/BundleIdentifierMigration.swift`
-- `Tinycast/Migrations/Handoff/`, the whole folder: `BundleIdentifierHandoff.swift` and `Info.plist`
 - `Tests/BundleIdentifierMigrationTests.swift`
-- `Scripts/wrap-handoff.sh`
-- `Scripts/package-handoff.sh`
 
 **Remove these lines**
 
 - `Tinycast/App/TinycastApp.swift`: the `BundleIdentifierMigration.run()` call in
   `TinycastLaunch.main`.
-- `Tinycast/Features/Updates/Model/ReleaseFeed.swift`: `handoffMarker` and its doc comment, and its
-  check in `asset(from:for:)`, so the filter is `$0.name.hasSuffix(".zip")` again.
-- `Tests/UpdatesTests.swift`: the `com.tinycast.app` expectation in `derivesChannels`, and the
-  `handoff` and `handoffOnly` cases at the end of `picksTheZipThisMacCanRun`.
 - `Scripts/run-tests.sh`: the `run BundleIdentifierMigrationTests` entry.
 - `Scripts/check-migrations.sh`: once no dated migrations remain, the dated-row block: its comment,
   the `until=` line and the `if [ -n "$until" ]` block around `continue`.
-- `project.yml`: both `TINYCAST_LEGACY_BUNDLE_IDENTIFIER` settings, the `Migrations/Handoff` exclude
-  in the `Tinycast` target, and the whole `TinycastHandoff` target with its comment. Then run
-  `xcodegen generate`, so `Tinycast.xcodeproj` loses them too.
-- `.github/workflows/release.yml`:
-  - the `legacy_bundle_id` job output;
-  - in "Compute release metadata", the `LEGACY=` line with its comment, and the `legacy_bundle_id`
-    and `handoff_file` echoes;
-  - both "Build and notarize the handoff" steps, and the comment above the build job's one;
-  - in "Publish GitHub Release", the handoff files in `gh release create`: give it the DMG, the zip
-    and the `.sig` again, and delete the second `gh release upload` call with its comment;
-  - in the `universal` job, the `LEGACY_BUNDLE_ID` env, and the first `gh release upload` call (the
-    handoff) with the comment after it.
 
 **Edit these docs**
 
 - [testing.md](testing.md): the `BundleIdentifierMigrationTests` row.
-- [release.md](release.md): the whole "The bundle id handoff" section.
-- [features/updates.md](features/updates.md): the paragraph under the channel table that starts
-  "Until 2027-05-13".
 - This file: the "or from `TinycastLaunch.main`" clause in [Adding one](#adding-one), the
   `BundleIdentifierMigration` row and this section. Remove the "Except a dated row" invariant only
   once no dated migrations remain.

@@ -228,6 +228,11 @@ struct RootPaletteView: View {
             header: title,
             items: [
                 PopoverMenuItem(
+                    localizedTitle: "Check for Updates", systemImage: "arrow.down.circle"
+                ) {
+                    core.updateCoordinator.checkForUpdates()
+                },
+                PopoverMenuItem(
                     localizedTitle: "Changelog",
                     systemImage: "clock.arrow.trianglehead.2.counterclockwise.rotate.90"
                 ) {
@@ -235,14 +240,18 @@ struct RootPaletteView: View {
                         openURL(url)
                     }
                 },
-                PopoverMenuItem(localizedTitle: "About Tinycast", systemImage: "info.circle") {
+                PopoverMenuItem(
+                    localizedTitle: "About Tinycast", systemImage: "info.circle",
+                    startsSection: true
+                ) {
                     core.settingsCoordinator.showAbout()
                 },
                 PopoverMenuItem(localizedTitle: "Support Tinycast", systemImage: "heart") {
                     core.supportCoordinator.showSupport()
                 },
                 PopoverMenuItem(
-                    localizedTitle: "Settings", systemImage: "gearshape", shortcut: "⌘,"
+                    localizedTitle: "Settings", systemImage: "gearshape",
+                    startsSection: true, shortcut: "⌘,"
                 ) {
                     core.settingsCoordinator.showSettings()
                 },
@@ -269,7 +278,6 @@ struct RootPaletteView: View {
             let filtered = appMenuContent.matching(ActionMenuSearchQuery(vm.menuQuery))
             return PaletteMenuContent(
                 popover: filtered.content, selection: $menuSelection,
-                visibleRows: Theme.Size.appMenuVisibleRows,
                 search: PopoverMenu.Search(
                     placeholder: String(localized: "Search for actions…"), placement: .bottom),
                 onActivate: activateMenuItem, preferredSelection: filtered.bestMatch)

@@ -1,6 +1,6 @@
 # Updates
 
-By default, Tinycast CN checks `joylae/tinycast` releases once a day and offers the newest
+By default, Tinycast CN checks `joylae/tinycast` releases twice a day and offers the newest
 release for its own channel in a pill in the palette, then installs it at the next relaunch or quit.
 There is no Sparkle or appcast.
 
@@ -110,9 +110,11 @@ self-rescheduling pump, and one atomic JSON file.
 It holds the source `repository`, `lastCheckedAt`, the newest release seen, and the version just
 installed. A cache from another repository, or an older cache with no source, is discarded so its
 download URL and check time cannot carry over when switching forks. Freshness is
-measured from `lastCheckedAt`, so relaunching never re-asks GitHub; the interval is 24 h, dropping to
+measured from `lastCheckedAt`, so relaunching never re-asks GitHub; the interval is 12 h, dropping to
 2 h after a failed attempt, and the first check waits 30 s so it never lands in the login rush. The
-request carries a `User-Agent`, which the GitHub API rejects requests without.
+wait carries a 15 s tolerance so macOS can coalesce the wake with other timers. A check holds the
+~200 KB response only while parsing it, and the sleeping task holds nothing. The request carries a
+`User-Agent`, which the GitHub API rejects requests without.
 
 Disabling automatic checks takes effect immediately and survives relaunch. Turning them back on
 resumes the same schedule, with the startup delay and cached check time respected. Check for Updates
@@ -124,7 +126,13 @@ than what is running, unless an update is already downloading or waiting for qui
 update instead, since offering it again would discard the download or the staged copy.
 
 Check for Updates reports in a HUD: progress while it asks, then up to date or unreachable. When there
-is an update, it opens the palette so the pill shows.
+is an update, it opens the palette so the pill shows. It is reachable from the palette's app menu,
+the menu bar menu, the launcher, and Settings → About.
+
+Settings → About gives it a row of its own with a Check Now button and one status line: a local
+build says it does not update; otherwise the line reads checking, the newer version on offer, "Last
+checked" with a relative time that ticks once a minute, or not checked yet. It reads
+`UpdateCoordinator`'s status properties, never `stage`.
 
 ## Installing
 
