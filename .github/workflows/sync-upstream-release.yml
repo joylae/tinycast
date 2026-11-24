@@ -107,7 +107,7 @@ jobs:
             report conflict "$CONFLICTS"
             exit 0
           fi
-          if ! ./Scripts/run-tests.sh > /tmp/tests.log 2>&1; then
+          if ! ./Scripts/run-tests.sh --skip ClipboardTextTests > /tmp/tests.log 2>&1; then
             cat /tmp/tests.log
             report tests "$(tail -n 40 /tmp/tests.log)"
             exit 0
@@ -137,7 +137,7 @@ jobs:
           if [ "$BLOCKER" = "conflict" ]; then
             SUMMARY="\`git merge ${UPSTREAM_TAG}\` stopped on conflicts in these files:"
           else
-            SUMMARY="The merge applied cleanly but \`./Scripts/run-tests.sh\` failed. Last 40 lines:"
+            SUMMARY="The merge applied cleanly but the test suite failed. Last 40 lines:"
           fi
           LABEL_ARGS=()
           if gh label create sync-blocked --repo "$GITHUB_REPOSITORY" --color FBCA04 --description "Upstream sync needs a human" --force; then

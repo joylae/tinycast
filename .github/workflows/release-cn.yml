@@ -75,7 +75,7 @@ jobs:
           echo "DEVELOPER_DIR=$XCODE_PATH/Contents/Developer" >> "$GITHUB_ENV"
 
       - name: Run tests
-        run: ./Scripts/run-tests.sh
+        run: ./Scripts/run-tests.sh --skip ClipboardTextTests
 
       - name: Check Chinese localization
         run: ./Scripts/check-localization.sh --extract

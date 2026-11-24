@@ -54,6 +54,15 @@ fi
 failed=()
 ran=0
 only="${1:-}"
+skip=""
+if [ "$only" = "--skip" ]; then
+    if [ "$#" -ne 2 ] || [ -z "$2" ]; then
+        echo "Usage: $0 --skip HARNESS" >&2
+        exit 2
+    fi
+    skip="$2"
+    only=""
+fi
 
 # `--index` feeds harness compile commands to .compile, as xcodebuild never compiles Tests/.
 emit_db=0
@@ -92,6 +101,11 @@ run() {
     shift
     if [ -n "$only" ] && [ "$name" != "$only" ]; then return 0; fi
     if [ "$index_only" -eq 1 ] && [ "$emit_db" -eq 0 ]; then return 0; fi
+    if [ "$name" = "$skip" ]; then
+        printf 'Skipping %s\n' "$name"
+        skip=""
+        return 0
+    fi
     ran=$((ran + 1))
 
     # Absolute paths: sourcekit-lsp ignores `directory` for relative arguments and indexes nothing.
@@ -995,6 +1009,11 @@ fs.writeFileSync(comp, JSON.stringify([...kept, ...harnesses], null, 1));
 console.log(harnesses.length + " harness entries indexed into .compile");
 ' .compile "$DB"
     exit 0
+fi
+
+if [ -n "$skip" ]; then
+    echo "No runnable harness named '$skip' to skip." >&2
+    exit 2
 fi
 
 if [ "$ran" -eq 0 ]; then

@@ -15,8 +15,7 @@ The mechanical bar, in one place so it cannot drift. All five pass before a chan
 | A clean build | `xcodebuild … -configuration Debug CODE_SIGNING_ALLOWED=NO`, zero **new** warnings |
 | Docs still true | any doc your change made wrong, fixed in the same commit |
 
-There is no CI: every item is on you, run locally. Each is expanded below; the manual sweep at the
-end of this file is the sixth, judged by what you touched.
+Run these checks locally. The manual sweep at the end of this file depends on what you touched.
 
 ## The harnesses
 
@@ -24,6 +23,10 @@ end of this file is the sixth, judged by what you touched.
 ./Scripts/run-tests.sh              # all of them
 ./Scripts/run-tests.sh CalcTests    # just one, while iterating
 ```
+
+The CN sync and release workflows run `./Scripts/run-tests.sh --skip ClipboardTextTests` for
+[issue #5](https://github.com/joylae/tinycast/issues/5). The option excludes one exact harness name
+from the suite. The default local suite still includes `ClipboardTextTests`.
 
 `AppleIntelligenceTests` runs deterministic checks by default. Its real model generation is opt-in:
 
@@ -71,8 +74,8 @@ which is worth it only where the run dominates the compile — `RaycastTests` sp
 scrypt at `-Onone` and one second at `-O`. `slow` dispatches it in the first wave, so the longest
 harnesses are not still running after everything else has finished.
 
-The script is the **only** place the harness set is written down. Nothing runs it for you, so run it
-before you open a PR. Adding a harness means adding one `run` line.
+The script is the **only** place the harness set is written down. Run the full suite locally before
+opening a PR. Adding a harness means adding one `run` line.
 
 A harness is `Tests/<Subject>Tests.swift`, and its `@main` type has the same name, which is also what
 `run` and `./Scripts/run-tests.sh` call it. A benchmark is `<Subject>PerformanceTests`, stubs shared
