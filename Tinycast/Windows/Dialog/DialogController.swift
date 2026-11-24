@@ -156,8 +156,8 @@ final class DialogController: NSObject, NSWindowDelegate {
                 panel.makeKeyAndOrderFront(nil)
                 panel.orderFrontRegardless()
             }
-        } onCancel: { [weak self] in
-            Task { @MainActor in
+        } onCancel: {
+            Task { @MainActor [weak self] in
                 guard self?.presentationID == id else { return }
                 self?.finish(cancelIndex)
             }
