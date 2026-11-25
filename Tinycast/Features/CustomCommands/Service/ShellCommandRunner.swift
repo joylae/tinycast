@@ -153,7 +153,7 @@ enum ShellCommandRunner {
         guard
             let terminal = PseudoTerminal.spawn(
                 executable: shell, arguments: launch.arguments, environment: environment,
-                workingDirectory: launch.directory)
+                workingDirectory: launch.directory, queue: queue)
         else {
             launch.removeScript()
             return failedSession(String(localized: "The shell could not be started."))
@@ -207,6 +207,7 @@ enum ShellCommandRunner {
             }
             // Zero is EOF; -1 with EIO is what a pty master returns once its child is gone.
             let count = read(terminal.parentEnd, &buffer, readSize)
+            if count < 0 && errno == EINTR { continue }
             guard count > 0 else { break }
             decoder.append(buffer, count: count)
             let due = ContinuousClock().now - lastYield >= flushInterval

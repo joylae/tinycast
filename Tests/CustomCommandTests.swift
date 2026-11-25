@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 // Spawns real `/bin/zsh`; `ZDOTDIR` is a fixture, so every assertion is relative.
@@ -12,11 +13,16 @@ struct CustomCommandTests {
 
         var failures = 0
 
-        func check(_ description: String, _ condition: @autoclosure () -> Bool) {
+        func check(
+            _ description: String, _ condition: @autoclosure () -> Bool,
+            details: @autoclosure () -> String = ""
+        ) {
             if condition() {
                 print("PASS  \(description)")
             } else {
                 print("FAIL  \(description)")
+                let details = details()
+                if !details.isEmpty { print("      \(details)") }
                 failures += 1
             }
         }
@@ -394,7 +400,15 @@ struct CustomCommandTests {
         let places = ["one", "two", "three"].map { ordered.log.range(of: $0)?.lowerBound }
         check(
             "both streams keep the order they were written in",
-            places.allSatisfy { $0 != nil } && places[0]! < places[1]! && places[1]! < places[2]!)
+            ordered.result?.succeeded == true
+                && places.allSatisfy { $0 != nil } && places[0]! < places[1]! && places[1]! < places[2]!,
+            details: "\(String(reflecting: ordered.result?.termination)), output bytes: \(Array(ordered.log.utf8))")
+
+        let exited = readPTYAfterExit()
+        check(
+            "a command that exits before the first PTY read keeps its exact output and exit status",
+            exited?.bytes == Array("one\r\nh\u{e9}llo\r\nthree\r\n".utf8) && exited?.status == 7,
+            details: "exit: \(String(describing: exited?.status)), bytes: \(exited?.bytes ?? [])")
 
         // A pipe would block-buffer this and deliver it all at exit; a pty must not.
         let live = ShellCommandRunner.stream("echo first; sleep 1; echo second")
@@ -496,8 +510,10 @@ struct CustomCommandTests {
             ShellCommandRunner.stream("printf 'h\u{e9}llo w\u{f6}rld \u{2014} \u{fc}n\u{ef}code\\n'"))
         check(
             "a multi-byte character is never split into a replacement character",
-            multibyte.log.contains("h\u{e9}llo w\u{f6}rld \u{2014} \u{fc}n\u{ef}code")
-                && !multibyte.log.contains("\u{FFFD}"))
+            multibyte.result?.succeeded == true
+                && multibyte.log.contains("h\u{e9}llo w\u{f6}rld \u{2014} \u{fc}n\u{ef}code")
+                && !multibyte.log.contains("\u{FFFD}"),
+            details: "\(String(reflecting: multibyte.result?.termination)), output bytes: \(Array(multibyte.log.utf8))")
 
         // Stop must reach the whole chain, not just the shell in front of it.
         let stoppable = ShellCommandRunner.stream("sleep 43 & sleep 44")
@@ -686,6 +702,38 @@ struct CustomCommandTests {
         discardSuite(suiteName, defaults)
         print(failures == 0 ? "\nALL PASSED" : "\n\(failures) FAILED")
         exit(failures == 0 ? 0 : 1)
+    }
+
+    private static func readPTYAfterExit() -> (bytes: [UInt8], status: Int32)? {
+        guard let terminal = PseudoTerminal.spawn(
+            executable: "/bin/zsh", arguments: ["-fc", "printf 'one\\n'; printf 'h\u{e9}llo\\n' >&2; printf 'three\\n'; exit 7"],
+            environment: ProcessInfo.processInfo.environment, workingDirectory: "/", queue: .global()
+        ) else { return nil }
+        defer { terminal.close() }
+
+        var exit = siginfo_t()
+        var observed: Int32
+        repeat {
+            observed = waitid(P_PID, id_t(terminal.processID), &exit, WEXITED | WNOWAIT)
+        } while observed < 0 && errno == EINTR
+        guard observed == 0 else { return nil }
+
+        var bytes: [UInt8] = []
+        var buffer = [UInt8](repeating: 0, count: 1024)
+        var request = pollfd(fd: terminal.parentEnd, events: Int16(POLLIN), revents: 0)
+        var reachedEnd = false
+        while poll(&request, 1, 5_000) > 0 {
+            let count = read(terminal.parentEnd, &buffer, buffer.count)
+            if count > 0 {
+                bytes += buffer.prefix(count)
+                continue
+            }
+            if count < 0 && errno == EINTR { continue }
+            reachedEnd = count == 0 || errno == EIO
+            break
+        }
+        let status = terminal.wait()
+        return reachedEnd ? (bytes, status) : nil
     }
 }
 

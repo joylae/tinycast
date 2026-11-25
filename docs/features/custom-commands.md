@@ -209,6 +209,11 @@ assumed:
 leads its own session, so one `kill(-pid)` reaches the whole `a && b && c` chain. `Process.terminate`
 signals only zsh — a `sleep` started behind it survives, verified.
 
+On macOS, closing the last child-side descriptor can discard unread PTY output. The runner keeps
+its own child-side descriptor open through process exit and until `tcdrain` confirms the reader has
+consumed the queued bytes. Both PTY descriptors are close-on-exec so concurrent commands do not
+inherit them.
+
 The pty's stdin gets an EOT byte at spawn, which keeps the invariant a `/dev/null` stdin gave the
 pipe path: a command that prompts reads EOF and moves on rather than waiting on a terminal that will
 never answer.

@@ -6,20 +6,25 @@ final class PseudoTerminal: @unchecked Sendable {
     /// Everything the command writes to any of its three descriptors arrives here.
     let parentEnd: Int32
     let processID: pid_t
+    private let exitSource: any DispatchSourceProcess
 
-    private init(parentEnd: Int32, processID: pid_t) {
+    private init(parentEnd: Int32, processID: pid_t, exitSource: any DispatchSourceProcess) {
         self.parentEnd = parentEnd
         self.processID = processID
+        self.exitSource = exitSource
     }
 
     static func spawn(
         executable: String, arguments: [String], environment: [String: String],
-        workingDirectory: String
+        workingDirectory: String, queue: DispatchQueue
     ) -> PseudoTerminal? {
-        var parentEnd: Int32 = 0
-        var childEnd: Int32 = 0
-        var settings = terminalSettings()
-        guard openpty(&parentEnd, &childEnd, nil, &settings, nil) == 0 else { return nil }
+        let flags = O_RDWR | O_NOCTTY | O_CLOEXEC
+        let parentEnd = posix_openpt(flags)
+        guard parentEnd >= 0 else { return nil }
+        guard let childEnd = openChildEnd(for: parentEnd, flags: flags) else {
+            Darwin.close(parentEnd)
+            return nil
+        }
 
         var attributes: posix_spawnattr_t?
         posix_spawnattr_init(&attributes)
@@ -32,8 +37,6 @@ final class PseudoTerminal: @unchecked Sendable {
         for descriptor in Int32(0)...Int32(2) {
             posix_spawn_file_actions_adddup2(&actions, childEnd, descriptor)
         }
-        posix_spawn_file_actions_addclose(&actions, parentEnd)
-        posix_spawn_file_actions_addclose(&actions, childEnd)
 
         defer {
             posix_spawnattr_destroy(&attributes)
@@ -45,15 +48,23 @@ final class PseudoTerminal: @unchecked Sendable {
         let envp = CStringArray(environment.map { "\($0.key)=\($0.value)" })
         let status = posix_spawn(
             &processID, executable, &actions, &attributes, argv.pointers, envp.pointers)
-        Darwin.close(childEnd)
         guard status == 0, processID > 0 else {
+            Darwin.close(childEnd)
             Darwin.close(parentEnd)
             return nil
         }
         // Stands in for `/dev/null` stdin: a prompting command reads EOF and moves on.
         var endOfTransmission: UInt8 = 0x04
         _ = write(parentEnd, &endOfTransmission, 1)
-        return PseudoTerminal(parentEnd: parentEnd, processID: processID)
+
+        let exitSource = DispatchSource.makeProcessSource(identifier: processID, eventMask: .exit, queue: queue)
+        exitSource.setCancelHandler { Darwin.close(childEnd) }
+        exitSource.setEventHandler { [weak exitSource] in
+            while tcdrain(childEnd) == -1 && errno == EINTR {}
+            exitSource?.cancel()
+        }
+        exitSource.activate()
+        return PseudoTerminal(parentEnd: parentEnd, processID: processID, exitSource: exitSource)
     }
 
     /// Signals the session rather than the process — the negative pid is what reaches the children.
@@ -71,16 +82,29 @@ final class PseudoTerminal: @unchecked Sendable {
     }
 
     func close() {
+        exitSource.cancel()
         Darwin.close(parentEnd)
     }
 
-    /// Canonical for whole lines, echo off so the EOF byte never comes back as text.
-    private static func terminalSettings() -> termios {
+    private static func openChildEnd(for parentEnd: Int32, flags: Int32) -> Int32? {
+        var path = [CChar](repeating: 0, count: Int(PATH_MAX))
+        guard grantpt(parentEnd) == 0, unlockpt(parentEnd) == 0,
+            ptsname_r(parentEnd, &path, path.count) == 0
+        else { return nil }
+        let childEnd = open(path, flags)
+        guard childEnd >= 0 else { return nil }
+        if configure(childEnd) { return childEnd }
+        Darwin.close(childEnd)
+        return nil
+    }
+
+    private static func configure(_ childEnd: Int32) -> Bool {
         var settings = termios()
+        guard tcgetattr(childEnd, &settings) == 0 else { return false }
         cfmakeraw(&settings)
         settings.c_lflag = tcflag_t(ICANON | ISIG)
         settings.c_oflag = tcflag_t(OPOST | ONLCR)
-        return settings
+        return tcsetattr(childEnd, TCSANOW, &settings) == 0
     }
 }
 
